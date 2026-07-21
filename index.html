@@ -189,6 +189,7 @@
 .qd-when{display:flex;gap:10px;margin:2px 0 10px}
 .qd-when label{flex:1;font-size:11px;font-weight:700;color:#64748b;display:flex;flex-direction:column;gap:3px;text-transform:uppercase;letter-spacing:.3px}
 .qd-when input{padding:8px;border:1px solid #d7dbe6;border-radius:8px;font-size:14px}
+.qd-when select{padding:8px;border:1px solid #d7dbe6;border-radius:8px;font-size:14px;background:#fff}
 .qd-help{display:flex;gap:8px;margin-bottom:8px}
 .qd-list{max-height:230px;overflow:auto;border:1px solid #eef1f6;border-radius:10px}
 .qd-row{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-bottom:1px solid #f1f3f8;gap:10px}
@@ -198,6 +199,10 @@
 .qd-row.off .qd-d{color:#94a3b8;font-weight:500}
 .qd-row input{width:76px;text-align:center;padding:7px;border:1px solid #d7dbe6;border-radius:7px;font-size:15px;font-weight:700}
 .qd-total{padding:9px 4px 2px;font-size:13px;color:#334155;text-align:right}
+.fab{position:fixed;bottom:26px;right:26px;width:54px;height:54px;border-radius:50%;background:#1e5eff;color:#fff;font-size:30px;line-height:1;border:none;box-shadow:0 6px 18px rgba(30,94,255,.45);cursor:pointer;z-index:60;display:flex;align-items:center;justify-content:center;padding:0 0 3px}
+.fab:hover{background:#1749c9}
+.qd-person{width:100%;padding:9px;border:1px solid #d7dbe6;border-radius:9px;font-size:14px;font-weight:600;margin-bottom:12px;background:#fff}
+@media print{.fab{display:none!important}}
 .qd-chips{display:flex;gap:8px;margin-top:10px}
 .chip{flex:1;padding:9px;border:1px solid #d7dbe6;background:#f8fafc;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:#334155}
 .chip:hover{background:#eef3ff;border-color:#1e5eff;color:#1e5eff}
@@ -276,7 +281,7 @@
         <div class="spacer"></div>
         <label class="f" style="flex-direction:row;align-items:center;gap:8px"><span>Dept</span>
           <select id="deptFilter" onchange="renderPlanner()"><option value="all">All</option><option>Pharmacy</option><option>Retail</option></select></label>
-        <button class="btn ghost sm" onclick="printView('planner')">Print</button>
+        <button class="btn ghost sm" onclick="openPrintDialog()">Print</button>
         <button class="btn ghost sm" onclick="printMonthly()">Monthly PDF</button>
       </div>
       <div class="print-title print-only"><strong>Store 1478 Absence Planner</strong> &middot; <span class="pyear"></span></div>
@@ -287,6 +292,7 @@
       </div>
       <div class="planner-wrap" id="plannerWrap"></div>
       <p class="muted no-print" style="font-size:12px;margin-top:8px">Click any cell to log or edit. The two rows at the foot show how many are available each day per department; red means below your minimum cover.</p>
+      <button class="fab no-print" title="Add absence" aria-label="Add absence" onclick="qdNew()">+</button>
     </section>
 
     <!-- COVERAGE -->
@@ -525,14 +531,18 @@ function boot(){
   document.getElementById('covDate').value=iso(new Date());
   setMode('year'); showTab('planner');
   renderAll();
+  setTimeout(scrollToToday,60);
   if(syncCfg.enabled) cloudLoad();
 }
 function buildYearSel(){ const now=new Date().getFullYear(); const sel=document.getElementById('yearSel'); sel.innerHTML='';
   const m=state.settings.yearStartMonth||1;
-  for(let y=now-1;y<=now+2;y++){ const o=document.createElement('option'); o.value=y; o.textContent=m===1?y:(y+'/'+String(y+1).slice(2)); if(y===currentYear)o.selected=true; sel.appendChild(o);} }
+  const maxY=Math.max(now+2, Number(state.settings.maxYear)||0, currentYear);
+  for(let y=2026;y<=maxY;y++){ const o=document.createElement('option'); o.value=y; o.textContent=m===1?y:(y+'/'+String(y+1).slice(2)); if(y===currentYear)o.selected=true; sel.appendChild(o);}
+  const add=document.createElement('option'); add.value='__add'; add.textContent='+ Add year\u2026'; sel.appendChild(add); }
 function buildMonthSel(){ const M=['January','February','March','April','May','June','July','August','September','October','November','December']; const sel=document.getElementById('setYearStart'); sel.innerHTML='';
   M.forEach((m,i)=>{ const o=document.createElement('option'); o.value=i+1; o.textContent=m; if(i+1===(state.settings.yearStartMonth||1))o.selected=true; sel.appendChild(o);}); }
-function setYear(y){ currentYear=Number(y); periodIndex=0; save(); renderAll(); }
+function setYear(y){ if(y==='__add'){ const now=new Date().getFullYear(); state.settings.maxYear=Math.max(Number(state.settings.maxYear)||now+2, now+2)+1; save(); buildYearSel(); toast('Year added'); return; }
+  currentYear=Number(y); periodIndex=0; save(); renderAll(); }
 function leaveYearLabel(){ const m=state.settings.yearStartMonth||1; if(m===1)return String(currentYear);
   const S=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return `${S[m-1]} ${currentYear} \u2013 ${S[(m+10)%12]} ${currentYear+1}`; }
 
@@ -547,8 +557,13 @@ function showTab(t){ document.querySelectorAll('nav.tabs button').forEach(b=>b.c
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); document.getElementById('v-'+t).classList.add('active'); }
 
 /* ===== PLANNER VIEW MODE ===== */
-function setMode(m){ plannerMode=m; periodIndex=0; ['year','quarter','month'].forEach(x=>document.getElementById('mode-'+x).classList.toggle('active',x===m));
-  document.getElementById('periodNav').style.display=(m==='year')?'none':'flex'; renderPlanner(); }
+function periodOfToday(m){ const ys=state.settings.yearStartMonth||1; const t=new Date();
+  const off=(t.getFullYear()-currentYear)*12+(t.getMonth()+1-ys);
+  if(off<0||off>11) return 0; return m==='month'?off:m==='quarter'?Math.floor(off/3):0; }
+function scrollToToday(){ const el=document.querySelector('#plannerWrap td.cell.today'); const wrap=document.getElementById('plannerWrap');
+  if(el&&wrap){ const r=el.offsetLeft; wrap.scrollLeft=Math.max(0, r-Math.floor(wrap.clientWidth/2)); } }
+function setMode(m){ plannerMode=m; periodIndex=periodOfToday(m); ['year','quarter','month'].forEach(x=>document.getElementById('mode-'+x).classList.toggle('active',x===m));
+  document.getElementById('periodNav').style.display=(m==='year')?'none':'flex'; renderPlanner(); setTimeout(scrollToToday,30); }
 function periodStep(d){ const max=plannerMode==='month'?11:3; periodIndex=Math.min(max,Math.max(0,periodIndex+d)); renderPlanner(); }
 function visibleRange(){
   const {start,end}=yearBounds(currentYear); const m=state.settings.yearStartMonth||1; const sm=m-1;
@@ -614,10 +629,16 @@ function cellClick(id,ds,absId){ const st=state.staff.find(x=>x.id===id); if(!st
   qd={id,type:a?(a.type==='holiday'&&a.bh?'bankhol':a.type):'holiday',from:ds,to:ds,hrs:{}};
   if(a) qd.hrs[ds]=a.hours;
   renderQd(); }
+function qdNew(){ qd={id:'',type:'holiday',from:iso(new Date()),to:iso(new Date()),hrs:{},pick:true}; renderQd(); }
+function qdPick(v){ qd.id=v; qd.hrs={}; qd.from=val('qdFrom')||qd.from; qd.to=val('qdTo')||qd.to; renderQd(); }
 function renderQd(){ const st=state.staff.find(x=>x.id===qd.id);
+  const order=['Pharmacy','Retail','Management'];
+  const roster=[...state.staff].sort((a,b)=>order.indexOf(a.dept)-order.indexOf(b.dept)||a.name.localeCompare(b.name));
+  const pickHtml=qd.pick?`<select class="qd-person" onchange="qdPick(this.value)"><option value="" ${!st?'selected':''} disabled>Choose team member\u2026</option>${roster.map(x=>`<option value="${x.id}" ${x.id===qd.id?'selected':''}>${esc(x.name)} \u00b7 ${x.dept}</option>`).join('')}</select>`:'';
   document.getElementById('modalMount').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal qd">
-    <div class="mh"><h3>${esc(st.name)}</h3><button class="x" onclick="closeModal()">&times;</button></div>
+    <div class="mh"><h3>${st?esc(st.name):'Add absence'}</h3><button class="x" onclick="closeModal()">&times;</button></div>
     <div class="mb">
+      ${pickHtml}
       <div class="qd-types">
         <button type="button" class="qd-t ${qd.type==='holiday'?'on':''}" data-t="holiday" onclick="qdType('holiday')">Holiday</button>
         <button type="button" class="qd-t bank ${qd.type==='bankhol'?'on':''}" data-t="bankhol" onclick="qdType('bankhol')">Bank hol</button>
@@ -628,7 +649,7 @@ function renderQd(){ const st=state.staff.find(x=>x.id===qd.id);
         <label>To<input type="date" id="qdTo" value="${qd.to}" onchange="qdRange()"></label>
       </div>
       <div class="qd-help"><button type="button" class="chip" onclick="qdFill(false)">Fill working days</button><button type="button" class="chip" onclick="qdFill(true)">All 0</button></div>
-      <div id="qdDays">${qdDaysHtml(st)}</div>
+      <div id="qdDays">${st?qdDaysHtml(st):'<div class="muted" style="padding:14px 4px;font-size:13px">Choose a team member above to set the hours.</div>'}</div>
       <div class="muted" style="font-size:12px;margin-top:6px">Enter hours per day (quarter-hour steps ok, e.g. 5.25, 7.5; 0 = day off). Bank hol still comes off the holiday allowance. Set a day to 0 to clear it.</div>
     </div>
     <div class="mf"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="qdSave()">Save</button></div></div></div>`; }
@@ -640,11 +661,11 @@ function qdDaysHtml(st){ let d=parse(qd.from),e=parse(qd.to); if(e<d){const t=d;
     d.setDate(d.getDate()+1); n++; }
   return `<div class="qd-list">${rows}</div><div class="qd-total">Total <b id="qdTotalV">${round2(total)}</b>h over ${n} day${n===1?'':'s'}</div>`; }
 function qdReadInputs(){ document.querySelectorAll('[id^="qh_"]').forEach(i=>{ qd.hrs[i.id.slice(3)]=i.value; }); }
-function qdRange(){ qdReadInputs(); qd.from=val('qdFrom')||qd.from; qd.to=val('qdTo')||qd.to; document.getElementById('qdDays').innerHTML=qdDaysHtml(state.staff.find(x=>x.id===qd.id)); }
+function qdRange(){ qdReadInputs(); qd.from=val('qdFrom')||qd.from; qd.to=val('qdTo')||qd.to; const st=state.staff.find(x=>x.id===qd.id); if(st) document.getElementById('qdDays').innerHTML=qdDaysHtml(st); }
 function qdSum(){ let t=0; document.querySelectorAll('[id^="qh_"]').forEach(i=>t+=Number(i.value)||0); const el=document.getElementById('qdTotalV'); if(el)el.textContent=round2(t); }
-function qdFill(zero){ const st=state.staff.find(x=>x.id===qd.id); document.querySelectorAll('[id^="qh_"]').forEach(i=>{ const ds=i.id.slice(3); const v=zero?0:qdDefault(st,ds); i.value=v; qd.hrs[ds]=v; }); qdSum(); }
+function qdFill(zero){ const st=state.staff.find(x=>x.id===qd.id); if(!st){ toast('Choose a team member first'); return; } document.querySelectorAll('[id^="qh_"]').forEach(i=>{ const ds=i.id.slice(3); const v=zero?0:qdDefault(st,ds); i.value=v; qd.hrs[ds]=v; }); qdSum(); }
 function qdType(t){ qd.type=t; document.querySelectorAll('.qd-t').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); }
-function qdSave(){ if(!qd)return; qdReadInputs(); const isBank=qd.type==='bankhol'; const type=qd.type==='sickness'?'sickness':'holiday';
+function qdSave(){ if(!qd)return; if(!state.staff.find(x=>x.id===qd.id)){ toast('Choose a team member first'); return; } qdReadInputs(); const isBank=qd.type==='bankhol'; const type=qd.type==='sickness'?'sickness':'holiday';
   let d=parse(qd.from),e=parse(qd.to); if(e<d){const t=d;d=e;e=t;} let added=0,tot=0,n=0;
   while(d<=e&&n<62){ const ds=iso(d); let h=round2(Number(qd.hrs[ds])||0);
     const ex=state.absences.find(a=>a.staffId===qd.id&&a.start===ds&&a.end===ds);
@@ -720,6 +741,29 @@ function monthBlock(y,mo,team,mc,showNames,incSick){
 
 /* ===== MONTHLY PRINT (one month per A4 landscape page, hours per box) ===== */
 function printMonthly(){ renderMonthPrint(); printView('monthprint'); }
+function printTarget(y,off){ const m0=(state.settings.yearStartMonth||1)-1; return {yy:y+Math.floor((m0+off)/12), mo:(m0+off)%12}; }
+function openPrintDialog(){
+  const now=new Date().getFullYear(); const maxY=Math.max(now+2, Number(state.settings.maxYear)||0, currentYear); const m1=state.settings.yearStartMonth||1;
+  let yopts=''; for(let y=2026;y<=maxY;y++) yopts+=`<option value="${y}" ${y===currentYear?'selected':''}>${m1===1?y:(y+'/'+String(y+1).slice(2))}</option>`;
+  const t=new Date(); const curOff=(t.getFullYear()-currentYear)*12+(t.getMonth()+1-m1);
+  let mopts=''; for(let o=0;o<12;o++){ const {yy,mo}=printTarget(currentYear,o); const lab=new Date(yy,mo,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'}); mopts+=`<option value="${o}" ${o===(curOff>=0&&curOff<12?curOff:0)?'selected':''}>${lab}</option>`; }
+  document.getElementById('modalMount').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal qd">
+    <div class="mh"><h3>Print month</h3><button class="x" onclick="closeModal()">&times;</button></div>
+    <div class="mb">
+      <div class="qd-when">
+        <label>Leave year<select id="prYear" onchange="prYearChanged()">${yopts}</select></label>
+        <label>Month<select id="prMonth">${mopts}</select></label>
+      </div>
+      <div class="muted" style="font-size:12px">Prints that month for the whole team, A4 landscape, hours shown in each day.</div>
+    </div>
+    <div class="mf"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="doPrintMonth()">Print</button></div></div></div>`; }
+function prYearChanged(){ const y=Number(val('prYear')); const sel=document.getElementById('prMonth'); const keep=Number(sel.value)||0; let mopts='';
+  for(let o=0;o<12;o++){ const {yy,mo}=printTarget(y,o); const lab=new Date(yy,mo,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'}); mopts+=`<option value="${o}" ${o===keep?'selected':''}>${lab}</option>`; } sel.innerHTML=mopts; }
+function doPrintMonth(){ const y=Number(val('prYear')), off=Number(val('prMonth'))||0; const {yy,mo}=printTarget(y,off);
+  const order=['Pharmacy','Retail','Management']; const rk=d=>{const i=order.indexOf(d);return i<0?99:i;};
+  const staff=[...state.staff].sort((a,b)=>rk(a.dept)-rk(b.dept)||a.name.localeCompare(b.name));
+  document.getElementById('monthprintMount').innerHTML=monthPrintTable(yy,mo,staff);
+  closeModal(); printView('monthprint'); }
 function renderMonthPrint(){
   const{start,end}=yearBounds(currentYear); const order=['Pharmacy','Retail','Management'];
   const rk=d=>{const i=order.indexOf(d);return i<0?99:i;};
