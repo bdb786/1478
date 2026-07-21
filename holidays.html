@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Store 1478 - Holiday &amp; Sickness Tracker</title>
+<style>
+  :root{
+    --navy:#05054B; --navy2:#111a5c; --ink:#12142b; --mut:#5a6079;
+    --line:#e3e6f0; --bg:#f4f5fa; --card:#ffffff;
+    --hol:#2563eb; --hol-bg:#dbeafe; --hol-pend:#93c5fd;
+    --sick:#dc2626; --sick-bg:#fde3e3;
+    --other:#64748b; --other-bg:#e8ebf1;
+    --wk:#eef0f6; --today:#f59e0b; --bh:#7c3aed;
+    --ok:#16a34a; --warn:#d97706; --bad:#dc2626;
+    --radius:10px; --shadow:0 1px 2px rgba(12,14,43,.06),0 8px 24px rgba(12,14,43,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--ink); font-size:14px; line-height:1.45;-webkit-font-smoothing:antialiased}
+  h1,h2,h3{margin:0;font-weight:700;letter-spacing:-.01em}
+  button{font:inherit;cursor:pointer;border:0;background:none}
+  input,select,textarea{font:inherit;color:inherit}
+  .hidden{display:none !important}
+
+  header.top{background:var(--navy);color:#fff;padding:12px 18px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:40}
+  header.top .brand{display:flex;align-items:center;gap:10px}
+  .logo{width:30px;height:30px;border-radius:7px;background:#fff;color:var(--navy);font-weight:800;display:grid;place-items:center;font-size:13px;letter-spacing:-.03em}
+  header.top h1{font-size:16px;line-height:1.1}
+  header.top .sub{font-size:11px;opacity:.7;font-weight:500}
+  header.top .spacer{flex:1}
+  .yearpick{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px 10px;font-weight:600}
+  .yearpick option{color:#000}
+  .whoami{font-size:12px;opacity:.85;display:flex;align-items:center;gap:8px}
+  .syncdot{font-size:11px;opacity:.9;display:flex;align-items:center;gap:6px}
+  .syncdot i{width:8px;height:8px;border-radius:50%;background:#94a3b8;display:inline-block}
+  .syncdot.on i{background:#4ade80}.syncdot.err i{background:#f87171}.syncdot.busy i{background:#fbbf24}
+  .btn-lock{background:rgba(255,255,255,.14);color:#fff;padding:6px 12px;border-radius:8px;font-weight:600;font-size:12px}
+
+  nav.tabs{background:var(--card);border-bottom:1px solid var(--line);padding:0 12px;display:flex;gap:2px;position:sticky;top:54px;z-index:30;overflow-x:auto}
+  nav.tabs button{padding:12px 14px;color:var(--mut);font-weight:600;font-size:13px;border-bottom:2px solid transparent;white-space:nowrap}
+  nav.tabs button.active{color:var(--navy);border-bottom-color:var(--navy)}
+  nav.tabs button:hover{color:var(--ink)}
+
+  main{padding:18px;max-width:1400px;margin:0 auto}
+  .view{display:none}.view.active{display:block}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .pad{padding:16px}
+  .section-head{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+  .section-head h2{font-size:18px}.section-head .spacer{flex:1}
+  .muted{color:var(--mut)}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 9px;border-radius:999px;background:var(--other-bg);color:var(--mut)}
+
+  .btn{background:var(--navy);color:#fff;padding:9px 15px;border-radius:8px;font-weight:600;font-size:13px}
+  .btn:hover{background:var(--navy2)}
+  .btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--line)}
+  .btn.ghost:hover{background:#f7f8fc}
+  .btn.sm{padding:6px 10px;font-size:12px}
+  .btn.danger{background:#fff;color:var(--bad);border:1px solid #f3c9c9}.btn.danger:hover{background:#fdeaea}
+  .btn.active{outline:2px solid var(--navy);outline-offset:1px}
+
+  label.f{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--mut)}
+  label.f input,label.f select,label.f textarea{border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:#fff}
+  label.f input:focus,label.f select:focus{outline:2px solid var(--hol);outline-offset:-1px;border-color:var(--hol)}
+  .grid-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+
+  table{border-collapse:collapse;width:100%}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);font-size:13px}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);font-weight:700}
+  tbody tr:hover{background:#fafbff}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px}
+  .tag.hol{background:var(--hol-bg);color:#1e40af}.tag.sick{background:var(--sick-bg);color:#991b1b}
+  .tag.other{background:var(--other-bg);color:#334155}.tag.appr{background:#dcfce7;color:#166534}.tag.pend{background:#fef3c7;color:#92400e}
+  .bal-ok{color:var(--ok);font-weight:700}.bal-warn{color:var(--warn);font-weight:700}.bal-bad{color:var(--bad);font-weight:700}
+
+  .planner-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fff;max-height:72vh}
+  table.planner{border-collapse:separate;border-spacing:0;width:max-content}
+  table.planner th,table.planner td{border:0;padding:0}
+  .planner .corner{position:sticky;left:0;top:0;z-index:6;background:#fff;min-width:150px;max-width:150px;border-right:2px solid var(--line);border-bottom:1px solid var(--line);padding:6px 10px}
+  .planner .mhead{position:sticky;top:0;z-index:4;background:#f7f8fc;border-bottom:1px solid var(--line);border-right:1px solid var(--line);text-align:center;font-size:11px;font-weight:700;color:var(--navy);padding:5px 0}
+  .planner .dhead{position:sticky;top:26px;z-index:4;background:#fbfcff;border-bottom:1px solid var(--line);width:22px;min-width:22px;font-size:9px;color:var(--mut);text-align:center;padding:3px 0;line-height:1.15}
+  .planner .dhead .dow{font-size:8px;opacity:.7}
+  .planner .dhead.we{background:var(--wk)}
+  .planner .dhead.bh{background:#ede9fe;color:#6d28d9;font-weight:700}
+  .planner .nm{position:sticky;left:0;z-index:3;background:#fff;min-width:150px;max-width:150px;border-right:2px solid var(--line);border-bottom:1px solid var(--line);padding:6px 10px;font-weight:600;font-size:12px}
+  .planner .nm small{display:block;color:var(--mut);font-weight:500;font-size:10px}
+  .planner td.cell{width:22px;min-width:22px;height:26px;border-right:1px solid #f0f2f8;border-bottom:1px solid #f0f2f8;cursor:pointer;position:relative}
+  .planner td.cell.we{background:var(--wk)}
+  .planner td.cell.off{background:#f8fafc;background-image:repeating-linear-gradient(45deg,#eef1f6,#eef1f6 2px,transparent 2px,transparent 5px)}
+  .planner td.cell.today{box-shadow:inset 0 0 0 2px var(--today)}
+  .planner td.cell.bh{box-shadow:inset 2px 0 0 var(--bh)}
+  .planner td.cell:hover{outline:2px solid var(--navy);outline-offset:-2px;z-index:2}
+  .planner td.cell.hol{background:var(--hol)}
+  .planner td.cell.holp{background:repeating-linear-gradient(45deg,var(--hol-pend),var(--hol-pend) 4px,#fff 4px,#fff 8px)}
+  .planner td.cell.holbh{background:#c084fc}
+  .planner td.cell.sick{background:var(--sick)}
+  .planner td.cell.other{background:var(--other)}
+  .planner[data-mode="month"] td.cell,.planner[data-mode="month"] .dhead{width:34px;min-width:34px}
+  .planner[data-mode="quarter"] td.cell,.planner[data-mode="quarter"] .dhead{width:26px;min-width:26px}
+  .planner .grp{position:sticky;left:0;z-index:3;background:var(--navy);color:#fff;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:5px 10px;border-bottom:1px solid var(--line)}
+  .planner tr.cover td{border-top:2px solid var(--line);font-size:9px;text-align:center;color:var(--mut);font-variant-numeric:tabular-nums;background:#fcfcfe}
+  .planner tr.cover .nm{background:#fcfcfe;font-size:11px;color:var(--navy)}
+  .planner tr.cover td.short{background:#fde3e3;color:#991b1b;font-weight:800}
+
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mut);align-items:center}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .sw{width:14px;height:14px;border-radius:3px;display:inline-block;border:1px solid rgba(0,0,0,.08)}
+  .sw.hol{background:var(--hol)}.sw.holp{background:repeating-linear-gradient(45deg,var(--hol-pend),var(--hol-pend) 3px,#fff 3px,#fff 6px)}
+  .sw.holbh{background:#c084fc}
+  .sw.sick{background:var(--sick)}.sw.other{background:var(--other)}.sw.we{background:var(--wk)}
+  .sw.bh{background:#fff;box-shadow:inset 3px 0 0 var(--bh);border:1px solid var(--line)}
+
+  .daychips{display:flex;gap:5px;flex-wrap:wrap}
+  .daychips label{display:flex;align-items:center;gap:4px;font-size:12px;font-weight:600;border:1px solid var(--line);border-radius:7px;padding:5px 8px;cursor:pointer;background:#fff;color:var(--mut)}
+  .daychips input{margin:0}
+  .daychips label:has(input:checked){background:var(--hol-bg);border-color:var(--hol);color:#1e40af}
+
+  .overlay{position:fixed;inset:0;background:rgba(8,10,30,.45);display:grid;place-items:center;z-index:60;padding:16px}
+  .modal{background:#fff;border-radius:14px;width:100%;max-width:520px;box-shadow:0 24px 60px rgba(0,0,0,.3);overflow:hidden;max-height:92vh;display:flex;flex-direction:column}
+  .modal .mh{background:var(--navy);color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between}
+  .modal .mh h3{font-size:15px}
+  .modal .mb{padding:18px;overflow:auto}
+  .modal .mf{padding:14px 18px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end}
+  .x{color:#fff;font-size:20px;line-height:1;opacity:.85}
+  .hint{font-size:12px;font-weight:600;margin-top:10px;padding:8px 11px;border-radius:8px}
+  .hint.ok{background:#dcfce7;color:#166534}.hint.some{background:#fef3c7;color:#92400e}.hint.bad{background:#fde3e3;color:#991b1b}
+
+  .gate{min-height:calc(100vh - 0px);display:grid;place-items:center;padding:24px;background:radial-gradient(1200px 500px at 50% -10%,#0a0a63 0%,var(--bg) 60%)}
+  .gate .box{background:#fff;border-radius:16px;box-shadow:var(--shadow);max-width:400px;width:100%;padding:26px;text-align:center}
+  .gate .lk{width:52px;height:52px;border-radius:14px;background:var(--navy);color:#fff;display:grid;place-items:center;margin:0 auto 14px;font-size:22px}
+  .gate h2{font-size:19px;margin-bottom:4px}.gate p{color:var(--mut);margin:0 0 18px}
+  .gate input{width:100%;text-align:center;letter-spacing:2px;border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;font-size:15px}
+  .gate .btn{width:100%;justify-content:center;padding:12px}
+  .err{color:var(--bad);font-size:12px;font-weight:600;min-height:16px}
+
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 18px;border-radius:10px;font-weight:600;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.3);z-index:80}
+  .empty{text-align:center;padding:30px;color:var(--mut)}
+  .kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px}
+  .kpi .card{padding:14px}.kpi .v{font-size:24px;font-weight:800;letter-spacing:-.02em}.kpi .k{font-size:12px;color:var(--mut);font-weight:600}
+  .covcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+  .covcard{border:1px solid var(--line);border-radius:12px;padding:16px}
+  .covcard h3{font-size:15px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+  .covcard .big{font-size:30px;font-weight:800}
+  .covcard .status{font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px}
+  .covcard .status.ok{background:#dcfce7;color:#166534}.covcard .status.bad{background:#fde3e3;color:#991b1b}
+  .offlist{margin-top:10px;font-size:12px;color:var(--mut)}
+  .offlist div{padding:3px 0;border-top:1px dashed var(--line)}
+
+  .print-only{display:none}.print-title{display:none}
+  .bkgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .bkmonth{border:1px solid var(--line);border-radius:8px;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
+  .bkmonth h4{background:var(--navy);color:#fff;font-size:12px;padding:5px 8px;text-align:center;font-weight:700;margin:0}
+  .bkdays{display:grid;grid-template-columns:repeat(7,1fr)}
+  .bkdow{font-size:8px;text-align:center;color:var(--mut);padding:3px 0;font-weight:700;background:#f7f8fc;border-bottom:1px solid var(--line)}
+  .bkday{min-height:38px;border-right:1px solid #eef1f6;border-bottom:1px solid #eef1f6;padding:2px 3px;font-size:8px;line-height:1.15;overflow:hidden;position:relative}
+  .bkday.sk::after{content:'';position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:#dc2626}
+  .bkday .dn{font-weight:700;font-size:9px;color:#1f2937}
+  .bkday .nm{display:block;color:#1e3a8a;font-weight:600}
+  .bk-open{background:#dcfce7}.bk-tight{background:#fef3c7}.bk-full{background:#fde3e3}.bk-none{background:#f8fafc;color:#cbd5e1}
+  .bkday.bh .dn{color:#7c3aed}
+  @media (max-width:900px){.bkgrid{grid-template-columns:repeat(2,1fr)}}
+  /* Monthly print sheet */
+  .mp-month{page-break-after:always;break-after:page}
+  .mp-month:last-child{page-break-after:auto}
+  .mp-title{font-size:13px;font-weight:800;color:var(--navy);margin:0 0 4px}
+  .mp-title small{font-weight:600;color:var(--mut)}
+  table.mp{width:100%;border-collapse:collapse;table-layout:fixed}
+  table.mp th,table.mp td{border:1px solid #cfd5e2;font-size:7px;padding:0;text-align:center;height:24px;overflow:hidden}
+  table.mp th{background:#f2f4f9;color:var(--navy);font-weight:700;line-height:1.05}
+  table.mp th.nm,table.mp td.nm{width:118px;text-align:left;padding:1px 5px;font-size:8px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  table.mp th.nm{font-size:10px}
+  table.mp td.we,table.mp th.we{background:#eef0f6}
+  table.mp td.hol{background:#bfdbfe}
+  table.mp td.holp{background:repeating-linear-gradient(45deg,#bfdbfe,#bfdbfe 3px,#fff 3px,#fff 6px)}
+  table.mp td.holbh{background:#e9d5ff}
+  table.mp td.sick{background:#fca5a5}
+  table.mp td.other{background:#dfe3ea}
+  table.mp td.closed{background:#e2e8f0;color:#94a3b8;background-image:repeating-linear-gradient(45deg,#d8dee8,#d8dee8 2px,transparent 2px,transparent 5px)}
+.modal.qd{max-width:360px}
+.qd-date{font-size:14px;font-weight:600;color:#334155;margin-bottom:12px}
+.qd-types{display:flex;gap:8px;margin-bottom:14px}
+.qd-t{flex:1;padding:9px;border:1.5px solid #d7dbe6;background:#fff;border-radius:9px;font-weight:600;font-size:13px;cursor:pointer;color:#475569}
+.qd-t.on{border-color:#1e5eff;background:#eef3ff;color:#1e5eff}
+.qd-t.bank.on{border-color:#a855f7;background:#f5edff;color:#8b2fd6}
+.qd .f input[type=number]{font-size:20px;font-weight:700;text-align:center;padding:12px}
+.qd-when{display:flex;gap:10px;margin:2px 0 10px}
+.qd-when label{flex:1;font-size:11px;font-weight:700;color:#64748b;display:flex;flex-direction:column;gap:3px;text-transform:uppercase;letter-spacing:.3px}
+.qd-when input{padding:8px;border:1px solid #d7dbe6;border-radius:8px;font-size:14px}
+.qd-when select{padding:8px;border:1px solid #d7dbe6;border-radius:8px;font-size:14px;background:#fff}
+.qd-help{display:flex;gap:8px;margin-bottom:8px}
+.qd-list{max-height:230px;overflow:auto;border:1px solid #eef1f6;border-radius:10px}
+.qd-row{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-bottom:1px solid #f1f3f8;gap:10px}
+.qd-row:last-child{border-bottom:none}
+.qd-row.off{background:#fafbfc}
+.qd-d{font-size:13px;color:#334155;font-weight:600}
+.qd-row.off .qd-d{color:#94a3b8;font-weight:500}
+.qd-row input{width:76px;text-align:center;padding:7px;border:1px solid #d7dbe6;border-radius:7px;font-size:15px;font-weight:700}
+.qd-total{padding:9px 4px 2px;font-size:13px;color:#334155;text-align:right}
+.fab{position:fixed;bottom:26px;right:26px;width:54px;height:54px;border-radius:50%;background:#1e5eff;color:#fff;font-size:30px;line-height:1;border:none;box-shadow:0 6px 18px rgba(30,94,255,.45);cursor:pointer;z-index:60;display:flex;align-items:center;justify-content:center;padding:0 0 3px}
+.fab:hover{background:#1749c9}
+.qd-person{width:100%;padding:9px;border:1px solid #d7dbe6;border-radius:9px;font-size:14px;font-weight:600;margin-bottom:12px;background:#fff}
+@media print{.fab{display:none!important}}
+.qd-chips{display:flex;gap:8px;margin-top:10px}
+.chip{flex:1;padding:9px;border:1px solid #d7dbe6;background:#f8fafc;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:#334155}
+.chip:hover{background:#eef3ff;border-color:#1e5eff;color:#1e5eff}
+  table.mp td.bh,table.mp th.bh{box-shadow:inset 0 2px 0 var(--bh)}
+  .vhrs{display:inline-block;transform:rotate(-90deg);transform-origin:center;white-space:nowrap;font-size:8px;font-weight:800;color:#152a63;line-height:1}
+  tr.mp-grp td{background:var(--navy);color:#fff;font-size:8px;font-weight:700;text-align:left;padding:1px 5px;letter-spacing:.04em}
+  @media print{
+    header.top,nav.tabs,.no-print,.gate{display:none !important}
+    body{background:#fff;font-size:11px}
+    main{padding:0;max-width:none}
+    .card{box-shadow:none;border:1px solid #ccc}
+    .planner-wrap{max-height:none;overflow:visible;border:0}
+    .view{display:none !important}.view.print-active{display:block !important}
+    .print-only{display:block}.print-title{display:block;margin-bottom:8px}
+    @page{size:A4 landscape;margin:9mm}
+    .planner td.cell,.planner .grp,.tag,.planner td.cell.we,.planner .dhead.we,.planner tr.cover td.short{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .bk-open,.bk-tight,.bk-full,.bk-none,.bkmonth h4,.bkdow{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    table.mp td.hol,table.mp td.holp,table.mp td.holbh,table.mp td.sick,table.mp td.other,table.mp td.we,table.mp th,tr.mp-grp td{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .bkgrid{grid-template-columns:repeat(4,1fr)}
+  }
+</style>
+</head>
+<body>
+
+<!-- GATE -->
+<div id="gate" class="gate">
+  <div class="box">
+    <div class="lk">&#128274;</div>
+    <h2>Store 1478 Absence Tracker</h2>
+    <p>Holiday &amp; sickness planner &middot; manager access</p>
+    <input id="gatePass" type="password" placeholder="Manager passcode" autocomplete="off" onkeydown="if(event.key==='Enter')tryUnlock()">
+    <div class="err" id="gateErr"></div>
+    <button class="btn" onclick="tryUnlock()">Unlock</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <header class="top">
+    <div class="brand"><div class="logo">B</div>
+      <div><h1>Store 1478 &middot; Absence Tracker</h1><div class="sub">Boots Manchester Didsbury &middot; Area 129</div></div>
+    </div>
+    <div class="spacer"></div>
+    <span class="syncdot" id="syncDot"><i></i><span id="syncText">Local only</span></span>
+    <select class="yearpick" id="yearSel" onchange="setYear(this.value)"></select>
+    <button class="btn-lock" onclick="lock()">Lock</button>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="planner" class="active" onclick="showTab('planner')">Year planner</button>
+    <button data-tab="coverage" onclick="showTab('coverage')">Coverage</button>
+    <button data-tab="bookcal" onclick="showTab('bookcal')">Booking sheet</button>
+    <button data-tab="balances" onclick="showTab('balances')">Balances</button>
+    <button data-tab="log" onclick="showTab('log')">Log absence</button>
+    <button data-tab="sickness" onclick="showTab('sickness')">Sickness</button>
+    <button data-tab="staff" onclick="showTab('staff')">Staff</button>
+    <button data-tab="requests" onclick="showTab('requests')">Provisional <span id="reqCount"></span></button>
+    <button data-tab="settings" onclick="showTab('settings')">Settings</button>
+  </nav>
+
+  <main>
+    <!-- PLANNER -->
+    <section id="v-planner" class="view active">
+      <div class="section-head no-print">
+        <h2>Planner</h2>
+        <div class="row" style="gap:4px">
+          <button class="btn ghost sm" id="mode-year" onclick="setMode('year')">Year</button>
+          <button class="btn ghost sm" id="mode-quarter" onclick="setMode('quarter')">Quarter</button>
+          <button class="btn ghost sm" id="mode-month" onclick="setMode('month')">Month</button>
+        </div>
+        <div class="row" style="gap:4px" id="periodNav">
+          <button class="btn ghost sm" onclick="periodStep(-1)">&lsaquo;</button>
+          <span class="pill" id="periodLabel" style="min-width:150px;justify-content:center"></span>
+          <button class="btn ghost sm" onclick="periodStep(1)">&rsaquo;</button>
+        </div>
+        <div class="spacer"></div>
+        <label class="f" style="flex-direction:row;align-items:center;gap:8px"><span>Dept</span>
+          <select id="deptFilter" onchange="renderPlanner()"><option value="all">All</option><option>Pharmacy</option><option>Retail</option></select></label>
+        <button class="btn ghost sm" onclick="openPrintDialog()">Print</button>
+        <button class="btn ghost sm" onclick="printMonthly()">Monthly PDF</button>
+      </div>
+      <div class="print-title print-only"><strong>Store 1478 Absence Planner</strong> &middot; <span class="pyear"></span></div>
+      <div class="legend no-print" style="margin-bottom:10px">
+        <span><i class="sw hol"></i>Holiday</span><span><i class="sw holbh"></i>Bank hol</span><span><i class="sw holp"></i>Provisional</span>
+        <span><i class="sw sick"></i>Sickness</span><span><i class="sw other"></i>Other/unpaid</span>
+        <span><i class="sw bh"></i>Bank holiday</span><span><i class="sw we"></i>Weekend</span>
+      </div>
+      <div class="planner-wrap" id="plannerWrap"></div>
+      <p class="muted no-print" style="font-size:12px;margin-top:8px">Click any cell to log or edit. The two rows at the foot show how many are available each day per department; red means below your minimum cover.</p>
+      <button class="fab no-print" title="Add absence" aria-label="Add absence" onclick="qdNew()">+</button>
+    </section>
+
+    <!-- COVERAGE -->
+    <section id="v-coverage" class="view">
+      <div class="section-head"><h2>Coverage</h2>
+        <label class="f" style="flex-direction:row;align-items:center;gap:8px"><span>Date</span><input type="date" id="covDate" onchange="renderCoverage()"></label>
+        <div class="spacer"></div><button class="btn ghost sm no-print" onclick="printView('coverage')">Print</button></div>
+      <div class="print-title print-only"><strong>Store 1478 Coverage</strong></div>
+      <div class="covcards" id="covCards"></div>
+      <p class="muted" style="font-size:12px;margin-top:10px">Available = staff in the department minus anyone confirmed off (holiday, sickness, unpaid) that day. Set minimum cover per department in Settings.</p>
+    </section>
+
+    <!-- BOOKING SHEET -->
+    <section id="v-bookcal" class="view">
+      <div class="section-head no-print">
+        <h2>Booking sheet</h2><span class="pill" id="bkYear"></span>
+        <div class="spacer"></div>
+        <label class="f" style="flex-direction:row;align-items:center;gap:8px"><span>Dept</span>
+          <select id="bkDept" onchange="renderBookcal()"><option value="all">Both</option><option>Pharmacy</option><option>Retail</option></select></label>
+        <label class="f" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="bkNames" checked onchange="renderBookcal()" style="width:auto"><span>Show names</span></label>
+        <label class="f" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="bkSick" onchange="renderBookcal()" style="width:auto"><span>Include sickness</span></label>
+        <button class="btn ghost sm" onclick="printView('bookcal')">Print</button>
+      </div>
+      <div class="print-title print-only"><strong>Store 1478 Holiday Booking Sheet</strong> &middot; <span class="pyear"></span></div>
+      <div class="legend" style="margin-bottom:12px">
+        <span><i class="sw" style="background:#dcfce7"></i>Open to book</span>
+        <span><i class="sw" style="background:#fef3c7"></i>Last slot</span>
+        <span><i class="sw" style="background:#fde3e3"></i>Full, can't book</span>
+        <span><i class="sw" style="background:#f8fafc"></i>Not scheduled</span>
+        <span><i class="sw" style="background:#fff;box-shadow:inset 0 0 0 2px #dc2626"></i>Sickness (if included)</span>
+        <span><i class="sw bh"></i>Bank holiday</span>
+      </div>
+      <div id="bookcalMount"></div>
+      <p class="muted no-print" style="font-size:12px;margin-top:10px">Colours use each department's working patterns and minimum cover, so a day turns amber on its last slot and red once booking more would drop below cover. Holidays only, never sickness. Reprint after any change.</p>
+    </section>
+
+    <!-- BALANCES -->
+    <section id="v-balances" class="view">
+      <div class="section-head no-print"><h2>Holiday balances</h2><span class="pill" id="balYear"></span>
+        <div class="spacer"></div><button class="btn ghost sm" onclick="printView('balances')">Print</button></div>
+      <div class="print-title print-only"><strong>Store 1478 Holiday Balances</strong> &middot; <span class="pyear"></span></div>
+      <div class="kpi no-print" id="balKpi"></div>
+      <div class="card"><div style="overflow:auto"><table id="balTable"></table></div></div>
+      <p class="muted" style="font-size:12px;margin-top:8px">Entitlement = contracted hours &times; <span id="multLabel">5.6</span> weeks (inclusive of bank holidays), plus carry-over. Taken = holiday already used to date; Booked = holiday scheduled ahead. Remaining = entitlement &minus; taken &minus; booked &minus; bank holidays on working days. Provisional (pencilled-in) is shown separately and not deducted until confirmed.</p>
+    </section>
+
+    <!-- LOG -->
+    <section id="v-log" class="view">
+      <div class="section-head"><h2>Log absence</h2></div>
+      <div class="card pad" style="margin-bottom:16px">
+        <div class="grid-form">
+          <label class="f">Staff<select id="logStaff" onchange="suggestHours()"></select></label>
+          <label class="f">Type<select id="logType" onchange="suggestHours()">
+            <option value="holiday">Holiday</option><option value="sickness">Sickness</option>
+            <option value="unpaid">Unpaid leave</option><option value="other">Other</option></select></label>
+          <label class="f">Start date<input type="date" id="logStart" onchange="suggestHours()"></label>
+          <label class="f">End date<input type="date" id="logEnd" onchange="suggestHours()"></label>
+          <label class="f">Total hours <span class="muted" id="hoursHint"></span><input type="number" step="0.25" min="0" id="logHours"></label>
+          <label class="f">Status<select id="logStatus"><option value="approved">Confirmed</option><option value="requested">Provisional</option></select></label>
+          <label class="f" style="grid-column:1/-1">Note (optional)<input type="text" id="logNote" placeholder="e.g. pre-booked, medical appt"></label>
+        </div>
+        <div id="logCover"></div>
+        <div class="row" style="margin-top:14px"><button class="btn" onclick="saveLog()">Add absence</button>
+          <button class="btn ghost" onclick="clearLog()">Clear</button><span id="logMsg" class="muted" style="font-size:12px"></span></div>
+      </div>
+      <div class="section-head"><h3>Recent entries</h3><div class="spacer"></div>
+        <label class="f" style="flex-direction:row;align-items:center;gap:8px"><span>Show</span>
+          <select id="logFilter" onchange="renderLog()"><option value="all">All</option><option value="holiday">Holiday</option>
+            <option value="sickness">Sickness</option><option value="requested">Provisional only</option></select></label></div>
+      <div class="card"><div style="overflow:auto"><table id="logTable"></table></div></div>
+    </section>
+
+    <!-- SICKNESS -->
+    <section id="v-sickness" class="view">
+      <div class="section-head"><h2>Sickness overview</h2><span class="pill" id="sickYear"></span>
+        <div class="spacer"></div><button class="btn ghost sm no-print" onclick="printView('sickness')">Print</button></div>
+      <div class="print-title print-only"><strong>Store 1478 Sickness Overview</strong> &middot; <span class="pyear"></span></div>
+      <div class="card"><div style="overflow:auto"><table id="sickTable"></table></div></div>
+      <p class="muted" style="font-size:12px;margin-top:8px">Occurrences and total days are within the selected leave year. Bradford Factor = occurrences&sup2; &times; days across the last 52 weeks. Bands: under 50 fine, 51&ndash;124 monitor, 125+ review.</p>
+    </section>
+
+    <!-- STAFF -->
+    <section id="v-staff" class="view">
+      <div class="section-head"><h2>Staff</h2><div class="spacer"></div><button class="btn" onclick="openStaff()">Add staff</button></div>
+      <div class="card"><div style="overflow:auto"><table id="staffTable"></table></div></div>
+    </section>
+
+    <!-- PROVISIONAL -->
+    <section id="v-requests" class="view">
+      <div class="section-head"><h2>Provisional holidays</h2><span class="pill">Pencilled in &middot; confirm or remove</span></div>
+      <div class="card"><div style="overflow:auto"><table id="reqTable"></table></div></div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="v-settings" class="view">
+      <div class="section-head"><h2>Settings</h2></div>
+      <div class="row" style="align-items:flex-start">
+        <div class="card pad" style="flex:1;min-width:280px">
+          <h3 style="margin-bottom:12px">General</h3>
+          <div class="grid-form">
+            <label class="f">Manager passcode<input type="text" id="setPass"></label>
+            <label class="f">Holiday weeks multiplier<input type="number" step="0.1" id="setMult"></label>
+            <label class="f">Leave year starts<select id="setYearStart"></select></label>
+            <label class="f">Min cover &middot; Pharmacy<input type="number" min="0" id="setCovPh"></label>
+            <label class="f">Min cover &middot; Retail<input type="number" min="0" id="setCovRt"></label>
+            <label class="f" style="justify-content:flex-end"><span style="display:flex;align-items:center;gap:8px;font-weight:600"><input type="checkbox" id="setClosed" style="width:auto"> Store closed on bank holidays</span></label>
+          </div>
+          <div class="row" style="margin-top:14px"><button class="btn" onclick="saveSettings()">Save settings</button></div>
+        </div>
+        <div class="card pad" style="flex:1;min-width:280px">
+          <h3 style="margin-bottom:12px">Cloud sync (GitHub)</h3>
+          <label class="f" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:10px"><input type="checkbox" id="syncEnabled" style="width:auto"> <span>Enable shared sync</span></label>
+          <div class="grid-form">
+            <label class="f">Owner / org<input id="syncOwner" placeholder="e.g. bdb786"></label>
+            <label class="f">Repository<input id="syncRepo" placeholder="e.g. 1478"></label>
+            <label class="f">File path<input id="syncPath" placeholder="data/absence.json"></label>
+            <label class="f">Branch<input id="syncBranch" placeholder="main"></label>
+            <label class="f" style="grid-column:1/-1">Access token (stored on this device only)<input type="password" id="syncToken" placeholder="github_pat_..."></label>
+            <label class="f" style="grid-column:1/-1">Encryption passphrase (optional, encrypts the file)<input type="password" id="syncEnc" placeholder="leave blank for plain JSON"></label>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn" onclick="saveSync()">Save &amp; connect</button>
+            <button class="btn ghost" onclick="cloudLoad(true)">Load from cloud</button>
+            <button class="btn ghost" onclick="cloudSave(true)">Save to cloud now</button>
+          </div>
+          <p class="muted" style="font-size:11px;margin:12px 0 0">Use a fine-grained token scoped to this one repo with read/write on Contents. With a passphrase set, the file is AES-256 encrypted so it stays private even in a public repo.</p>
+        </div>
+      </div>
+      <div class="card pad" style="margin-top:14px">
+        <h3 style="margin-bottom:12px">Backup</h3>
+        <div class="row">
+          <button class="btn ghost" onclick="exportData()">Export backup</button>
+          <button class="btn ghost" onclick="document.getElementById('importFile').click()">Import backup</button>
+          <input type="file" id="importFile" accept="application/json" class="hidden" onchange="importData(event)">
+          <button class="btn danger" onclick="wipeYear()">Clear this year's absences</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<section id="v-monthprint" class="view"><div id="monthprintMount"></div></section>
+
+<div id="modalMount"></div>
+<div id="toastMount"></div>
+
+<script>
+/* ===== STATE ===== */
+const LS_KEY='boots1478Absence', SYNC_KEY='boots1478Sync';
+const TYPES={holiday:'Holiday',sickness:'Sickness',unpaid:'Unpaid leave',other:'Other'};
+const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const BANK_HOLIDAYS={
+  "2025-01-01":"New Year's Day","2025-04-18":"Good Friday","2025-04-21":"Easter Monday","2025-05-05":"Early May bank holiday","2025-05-26":"Spring bank holiday","2025-08-25":"Summer bank holiday","2025-12-25":"Christmas Day","2025-12-26":"Boxing Day",
+  "2026-01-01":"New Year's Day","2026-04-03":"Good Friday","2026-04-06":"Easter Monday","2026-05-04":"Early May bank holiday","2026-05-25":"Spring bank holiday","2026-08-31":"Summer bank holiday","2026-12-25":"Christmas Day","2026-12-28":"Boxing Day (substitute)",
+  "2027-01-01":"New Year's Day","2027-03-26":"Good Friday","2027-03-29":"Easter Monday","2027-05-03":"Early May bank holiday","2027-05-31":"Spring bank holiday","2027-08-30":"Summer bank holiday","2027-12-27":"Christmas Day (substitute)","2027-12-28":"Boxing Day (substitute)",
+  "2028-01-03":"New Year's Day (substitute)","2028-04-14":"Good Friday","2028-04-17":"Easter Monday","2028-05-01":"Early May bank holiday","2028-05-29":"Spring bank holiday","2028-08-28":"Summer bank holiday","2028-12-25":"Christmas Day","2028-12-26":"Boxing Day",
+  "2029-01-01":"New Year's Day","2029-03-30":"Good Friday","2029-04-02":"Easter Monday","2029-05-07":"Early May bank holiday","2029-05-28":"Spring bank holiday","2029-08-27":"Summer bank holiday","2029-12-25":"Christmas Day","2029-12-26":"Boxing Day",
+  "2030-01-01":"New Year's Day","2030-04-19":"Good Friday","2030-04-22":"Easter Monday","2030-05-06":"Early May bank holiday","2030-05-27":"Spring bank holiday","2030-08-26":"Summer bank holiday","2030-12-25":"Christmas Day","2030-12-26":"Boxing Day",
+  "2031-01-01":"New Year's Day","2031-04-11":"Good Friday","2031-04-14":"Easter Monday","2031-05-05":"Early May bank holiday","2031-05-26":"Spring bank holiday","2031-08-25":"Summer bank holiday","2031-12-25":"Christmas Day","2031-12-26":"Boxing Day"
+};
+const SEED_STAFF=[];
+const SEED_ABS=[];
+let state, syncCfg, currentYear, plannerMode='year', periodIndex=0, saveTimer=null;
+
+function defaultState(){
+  return {
+    settings:{pass:'1478', mult:5.6, yearStartMonth:4, closedOnBH:false, minCover:{Pharmacy:1, Retail:2}},
+    year: computeLeaveYear(4),
+    staff: JSON.parse(JSON.stringify(SEED_STAFF)),
+    absences: JSON.parse(JSON.stringify(SEED_ABS))
+  };
+}
+function defaultSync(){ return {enabled:false, owner:'', repo:'', path:'data/absence.json', branch:'main', token:'', enc:'', sha:null}; }
+function s(){ return Math.random().toString(36).slice(2,9); }
+function computeLeaveYear(startM){ const n=new Date(); return (n.getMonth()+1 < startM)? n.getFullYear()-1 : n.getFullYear(); }
+
+function load(){
+  try{ state=JSON.parse(localStorage.getItem(LS_KEY))||defaultState(); }catch(e){ state=defaultState(); }
+  if(!state.settings) state.settings=defaultState().settings;
+  if(!state.settings.minCover) state.settings.minCover={Pharmacy:1,Retail:2};
+  if(state.settings.closedOnBH===undefined) state.settings.closedOnBH = state.settings.bhCountsAsWork===false ? true : (state.settings.bhCountsAsWork===true ? false : true);
+  state.staff.forEach(migrateStaff);
+  try{ syncCfg=JSON.parse(localStorage.getItem(SYNC_KEY))||defaultSync(); }catch(e){ syncCfg=defaultSync(); }
+  currentYear=state.year||computeLeaveYear(state.settings.yearStartMonth||4);
+}
+function migrateStaff(st){ if(!st.workset||!st.workset.length){ const base=[1,2,3,4,5,6,0]; st.workset=base.slice(0,Math.min(st.days||5,7)); } }
+function saveLocal(){ state.year=currentYear; localStorage.setItem(LS_KEY,JSON.stringify(state)); }
+function saveSyncCfg(){ localStorage.setItem(SYNC_KEY,JSON.stringify(syncCfg)); }
+function save(){ saveLocal(); if(syncCfg&&syncCfg.enabled){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>cloudSave(),2500); } }
+
+/* ===== DATES ===== */
+function iso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function parse(str){ const[y,m,dd]=str.split('-').map(Number); return new Date(y,m-1,dd); }
+function fmt(str){ return parse(str).toLocaleDateString('en-GB',{day:'numeric',month:'short'}); }
+function fmtFull(str){ return parse(str).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
+function daysBetween(a,b){ return Math.round((parse(b)-parse(a))/86400000); }
+function eachDay(a,b,cb){ let d=parse(a),e=parse(b); while(d<=e){ cb(iso(d),d.getDay()); d.setDate(d.getDate()+1);} }
+function yearBounds(yr){ const m=state.settings.yearStartMonth||1;
+  if(m===1) return {start:new Date(yr,0,1), end:new Date(yr,11,31)};
+  return {start:new Date(yr,m-1,1), end:new Date(yr+1,m-1,0)}; }
+function round2(n){ return Math.round(n*100)/100; }
+
+/* ===== WORKING PATTERN / BALANCES ===== */
+function workset(st){ return (st.workset&&st.workset.length)? st.workset : [1,2,3,4,5]; }
+function daysPerWeek(st){ return workset(st).length; }
+function dailyHours(st){ const d=daysPerWeek(st); return d>0? st.weekly/d : st.weekly/5; }
+function workDaysInRange(st,a,b){ const set=new Set(workset(st)); let n=0;
+  eachDay(a,b,(ds,dow)=>{ if(set.has(dow)){ if(state.settings.closedOnBH&&BANK_HOLIDAYS[ds])return; n++; } }); return n; }
+function isClosed(ds){ return !!(state.settings.closedOnBH&&BANK_HOLIDAYS[ds]); }
+function entitlement(st){ const base=(st.ent!=null&&st.ent!=='')?Number(st.ent):st.weekly*(state.settings.mult||5.6); return round2(base+(Number(st.carry)||0)); }
+function absForStaffYear(id,yr){ const{start,end}=yearBounds(yr); return state.absences.filter(a=>a.staffId===id&&parse(a.start)<=end&&parse(a.end)>=start); }
+function holidayTaken(id,yr,status){ return round2(absForStaffYear(id,yr).filter(a=>a.type==='holiday'&&(status?a.status===status:a.status==='approved')).reduce((t,a)=>t+Number(a.hours||0),0)); }
+function holidaySplit(id,yr){ const today=iso(new Date()); let tk=0,bk=0;
+  absForStaffYear(id,yr).filter(a=>a.type==='holiday'&&a.status==='approved').forEach(a=>{ const h=Number(a.hours||0); if(a.end<today) tk+=h; else bk+=h; });
+  return {taken:round2(tk),booked:round2(bk)}; }
+function bankHolidayHours(st,yr){ if(!state.settings.closedOnBH) return 0; const{start,end}=yearBounds(yr); const set=new Set(workset(st)); let h=0;
+  Object.keys(BANK_HOLIDAYS).forEach(ds=>{ const d=parse(ds); if(d>=start&&d<=end&&set.has(d.getDay())) h+=dailyHours(st); }); return round2(h); }
+
+/* ===== COVERAGE ===== */
+function offOnDate(ds,dept){ return state.staff.filter(st=>(dept==='all'||st.dept===dept)&&state.absences.some(a=>a.staffId===st.id&&a.start<=ds&&a.end>=ds&&(a.type==='sickness'||a.status==='approved'))); }
+function minCover(dept){ return Number((state.settings.minCover||{})[dept]||0); }
+
+/* ===== GATE ===== */
+function tryUnlock(){ const v=document.getElementById('gatePass').value;
+  if(v===(state.settings.pass||'1478')){ document.getElementById('gate').classList.add('hidden'); document.getElementById('app').classList.remove('hidden'); document.getElementById('gateErr').textContent=''; document.getElementById('gatePass').value=''; boot(); }
+  else document.getElementById('gateErr').textContent='Incorrect passcode'; }
+function lock(){ document.getElementById('app').classList.add('hidden'); document.getElementById('gate').classList.remove('hidden'); document.getElementById('modalMount').innerHTML=''; }
+
+/* ===== BOOT ===== */
+function boot(){
+  buildYearSel(); buildMonthSel();
+  document.getElementById('setPass').value=state.settings.pass;
+  document.getElementById('setMult').value=state.settings.mult;
+  document.getElementById('setCovPh').value=minCover('Pharmacy');
+  document.getElementById('setCovRt').value=minCover('Retail');
+  document.getElementById('setClosed').checked=state.settings.closedOnBH!==false;
+  document.getElementById('multLabel').textContent=state.settings.mult;
+  loadSyncForm(); updateSyncDot();
+  document.getElementById('covDate').value=iso(new Date());
+  setMode('year'); showTab('planner');
+  renderAll();
+  setTimeout(scrollToToday,60);
+  if(syncCfg.enabled) cloudLoad();
+}
+function buildYearSel(){ const now=new Date().getFullYear(); const sel=document.getElementById('yearSel'); sel.innerHTML='';
+  const m=state.settings.yearStartMonth||1;
+  const maxY=Math.max(now+2, Number(state.settings.maxYear)||0, currentYear);
+  for(let y=2026;y<=maxY;y++){ const o=document.createElement('option'); o.value=y; o.textContent=m===1?y:(y+'/'+String(y+1).slice(2)); if(y===currentYear)o.selected=true; sel.appendChild(o);}
+  const add=document.createElement('option'); add.value='__add'; add.textContent='+ Add year\u2026'; sel.appendChild(add); }
+function buildMonthSel(){ const M=['January','February','March','April','May','June','July','August','September','October','November','December']; const sel=document.getElementById('setYearStart'); sel.innerHTML='';
+  M.forEach((m,i)=>{ const o=document.createElement('option'); o.value=i+1; o.textContent=m; if(i+1===(state.settings.yearStartMonth||1))o.selected=true; sel.appendChild(o);}); }
+function setYear(y){ if(y==='__add'){ const now=new Date().getFullYear(); state.settings.maxYear=Math.max(Number(state.settings.maxYear)||now+2, now+2)+1; save(); buildYearSel(); toast('Year added'); return; }
+  currentYear=Number(y); periodIndex=0; save(); renderAll(); }
+function leaveYearLabel(){ const m=state.settings.yearStartMonth||1; if(m===1)return String(currentYear);
+  const S=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return `${S[m-1]} ${currentYear} \u2013 ${S[(m+10)%12]} ${currentYear+1}`; }
+
+function renderAll(){
+  document.querySelectorAll('.pyear').forEach(e=>e.textContent=leaveYearLabel());
+  document.getElementById('balYear').textContent=leaveYearLabel();
+  const sy=document.getElementById('sickYear'); if(sy)sy.textContent=leaveYearLabel();
+  fillStaffSelect();
+  renderPlanner(); renderCoverage(); renderBookcal(); renderBalances(); renderLog(); renderSickness(); renderStaff(); renderRequests();
+}
+function showTab(t){ document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); document.getElementById('v-'+t).classList.add('active'); }
+
+/* ===== PLANNER VIEW MODE ===== */
+function periodOfToday(m){ const ys=state.settings.yearStartMonth||1; const t=new Date();
+  const off=(t.getFullYear()-currentYear)*12+(t.getMonth()+1-ys);
+  if(off<0||off>11) return 0; return m==='month'?off:m==='quarter'?Math.floor(off/3):0; }
+function scrollToToday(){ const el=document.querySelector('#plannerWrap td.cell.today'); const wrap=document.getElementById('plannerWrap');
+  if(el&&wrap){ const r=el.offsetLeft; wrap.scrollLeft=Math.max(0, r-Math.floor(wrap.clientWidth/2)); } }
+function setMode(m){ plannerMode=m; periodIndex=periodOfToday(m); ['year','quarter','month'].forEach(x=>document.getElementById('mode-'+x).classList.toggle('active',x===m));
+  document.getElementById('periodNav').style.display=(m==='year')?'none':'flex'; renderPlanner(); setTimeout(scrollToToday,30); }
+function periodStep(d){ const max=plannerMode==='month'?11:3; periodIndex=Math.min(max,Math.max(0,periodIndex+d)); renderPlanner(); }
+function visibleRange(){
+  const {start,end}=yearBounds(currentYear); const m=state.settings.yearStartMonth||1; const sm=m-1;
+  if(plannerMode==='year') return {start,end,label:leaveYearLabel()};
+  const monthAbs=i=>{ const a=sm+i; return {y:currentYear+Math.floor(a/12), mo:((a%12)+12)%12}; };
+  if(plannerMode==='month'){ const {y,mo}=monthAbs(periodIndex); return {start:new Date(y,mo,1), end:new Date(y,mo+1,0), label:new Date(y,mo,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'})}; }
+  const a=monthAbs(periodIndex*3), b=monthAbs(periodIndex*3+2);
+  return {start:new Date(a.y,a.mo,1), end:new Date(b.y,b.mo+1,0), label:`${new Date(a.y,a.mo,1).toLocaleDateString('en-GB',{month:'short'})}\u2013${new Date(b.y,b.mo,1).toLocaleDateString('en-GB',{month:'short'})} ${b.y}`};
+}
+
+/* ===== PLANNER ===== */
+function renderPlanner(){
+  const wrap=document.getElementById('plannerWrap'); const dept=document.getElementById('deptFilter').value||'all';
+  const R=visibleRange(); document.getElementById('periodLabel').textContent=R.label;
+  const days=[]; let d=new Date(R.start); while(d<=R.end){ days.push(new Date(d)); d.setDate(d.getDate()+1);} 
+  const todayIso=iso(new Date());
+  const monthSpans=[]; let cur=null;
+  days.forEach(dt=>{ const k=dt.getFullYear()+'-'+dt.getMonth(); if(!cur||cur.k!==k){ cur={k,label:dt.toLocaleDateString('en-GB',{month:'short',year:plannerMode==='year'?undefined:'2-digit'}),count:1}; monthSpans.push(cur);} else cur.count++; });
+  let staff=state.staff.filter(st=>dept==='all'||st.dept===dept);
+  const order=['Pharmacy','Retail']; staff.sort((a,b)=>order.indexOf(a.dept)-order.indexOf(b.dept)||a.name.localeCompare(b.name));
+  const showDow=plannerMode!=='year';
+
+  let html=`<table class="planner" data-mode="${plannerMode}"><thead><tr><th class="corner">Team</th>`;
+  monthSpans.forEach(m=> html+=`<th class="mhead" colspan="${m.count}">${m.label}</th>`);
+  html+='</tr><tr><th class="corner" style="top:26px"></th>';
+  days.forEach(dt=>{ const we=dt.getDay()===0||dt.getDay()===6; const bh=BANK_HOLIDAYS[iso(dt)];
+    html+=`<th class="dhead ${we?'we':''} ${bh?'bh':''}" ${bh?`title="${esc(bh)}"`:''}>${dt.getDate()}${showDow?`<div class="dow">${DOW[dt.getDay()][0]}</div>`:''}</th>`; });
+  html+='</tr></thead><tbody>';
+
+  const lut={};
+  state.absences.forEach(a=>{ if(!lut[a.staffId])lut[a.staffId]={};
+    eachDay(a.start,a.end,ds=>{ const rank=t=>({sickness:4,holiday_approved:3,holiday_requested:2,unpaid:1,other:1})[t]||1;
+      const key=a.type==='holiday'?('holiday_'+a.status):a.type; const prev=lut[a.staffId][ds];
+      if(!prev||rank(key)>rank(prev.key)) lut[a.staffId][ds]={key,type:a.type,status:a.status,id:a.id,bh:a.bh}; }); });
+
+  let lastDept=null;
+  staff.forEach(st=>{ const set=new Set(workset(st));
+    if(st.dept!==lastDept){ lastDept=st.dept; html+=`<tr><td class="grp" colspan="${days.length+1}">${st.dept}</td></tr>`; }
+    html+=`<tr><td class="nm">${esc(st.name)}<small>${st.weekly}h &middot; ${daysPerWeek(st)}d${st.note?' &middot; '+esc(st.note):''}</small></td>`;
+    days.forEach(dt=>{ const ds=iso(dt); const we=dt.getDay()===0||dt.getDay()===6; const bh=BANK_HOLIDAYS[ds]; const cell=lut[st.id]&&lut[st.id][ds];
+      let cls='cell'; if(we)cls+=' we'; if((!set.has(dt.getDay())||isClosed(ds))&&!cell)cls+=' off'; if(bh)cls+=' bh'; if(ds===todayIso)cls+=' today';
+      if(cell){ if(cell.type==='sickness')cls+=' sick'; else if(cell.type==='holiday')cls+=cell.bh?' holbh':(cell.status==='approved'?' hol':' holp'); else cls+=' other'; }
+      const base=cell?`${st.name} \u2013 ${TYPES[cell.type]} (${statusLabel(cell.status)})`:`${st.name} \u2013 ${fmtFull(ds)}`;
+      html+=`<td class="${cls}" title="${bh?base+' \u00b7 '+esc(bh):base}" onclick="cellClick('${st.id}','${ds}',${cell?`'${cell.id}'`:'null'})"></td>`; });
+    html+='</tr>'; });
+  if(!staff.length) html+=`<tr><td class="nm">No staff</td><td colspan="${days.length}" class="empty">Add staff to begin</td></tr>`;
+
+  // coverage rows
+  const depts = dept==='all'? ['Pharmacy','Retail'] : [dept];
+  depts.forEach(dp=>{ const total=state.staff.filter(x=>x.dept===dp).length; if(!total)return; const mc=minCover(dp);
+    html+=`<tr class="cover"><td class="nm">${dp} available<small>min cover ${mc}</small></td>`;
+    days.forEach(dt=>{ const ds=iso(dt); if(isClosed(ds)){ html+=`<td title="Closed">&middot;</td>`; return; } const avail=total-offOnDate(ds,dp).length; const short=avail<mc;
+      html+=`<td class="${short?'short':''}" title="${dp}: ${avail} available on ${fmtFull(ds)}">${avail}</td>`; });
+    html+='</tr>'; });
+  html+='</tbody></table>'; wrap.innerHTML=html;
+}
+let qd=null;
+function half(x){ return Math.round(x*2)/2; }
+function qdDefault(st,ds){ return new Set(workset(st)).has(parse(ds).getDay())?(round2(dailyHours(st))||0):0; }
+function cellClick(id,ds,absId){ const st=state.staff.find(x=>x.id===id); if(!st)return;
+  const a=absId?state.absences.find(x=>x.id===absId):null;
+  if(a&&a.start!==a.end){ openEdit(a); return; }                 // legacy multi-day ranges use full form
+  qd={id,type:a?(a.type==='holiday'&&a.bh?'bankhol':a.type):'holiday',from:ds,to:ds,hrs:{}};
+  if(a) qd.hrs[ds]=a.hours;
+  renderQd(); }
+function qdNew(){ qd={id:'',type:'holiday',from:iso(new Date()),to:iso(new Date()),hrs:{},pick:true}; renderQd(); }
+function qdPick(v){ qd.id=v; qd.hrs={}; qd.from=val('qdFrom')||qd.from; qd.to=val('qdTo')||qd.to; renderQd(); }
+function renderQd(){ const st=state.staff.find(x=>x.id===qd.id);
+  const order=['Pharmacy','Retail','Management'];
+  const roster=[...state.staff].sort((a,b)=>order.indexOf(a.dept)-order.indexOf(b.dept)||a.name.localeCompare(b.name));
+  const pickHtml=qd.pick?`<select class="qd-person" onchange="qdPick(this.value)"><option value="" ${!st?'selected':''} disabled>Choose team member\u2026</option>${roster.map(x=>`<option value="${x.id}" ${x.id===qd.id?'selected':''}>${esc(x.name)} \u00b7 ${x.dept}</option>`).join('')}</select>`:'';
+  document.getElementById('modalMount').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal qd">
+    <div class="mh"><h3>${st?esc(st.name):'Add absence'}</h3><button class="x" onclick="closeModal()">&times;</button></div>
+    <div class="mb">
+      ${pickHtml}
+      <div class="qd-types">
+        <button type="button" class="qd-t ${qd.type==='holiday'?'on':''}" data-t="holiday" onclick="qdType('holiday')">Holiday</button>
+        <button type="button" class="qd-t bank ${qd.type==='bankhol'?'on':''}" data-t="bankhol" onclick="qdType('bankhol')">Bank hol</button>
+        <button type="button" class="qd-t ${qd.type==='sickness'?'on':''}" data-t="sickness" onclick="qdType('sickness')">Sickness</button>
+      </div>
+      <div class="qd-when">
+        <label>From<input type="date" id="qdFrom" value="${qd.from}" onchange="qdRange()"></label>
+        <label>To<input type="date" id="qdTo" value="${qd.to}" onchange="qdRange()"></label>
+      </div>
+      <div class="qd-help"><button type="button" class="chip" onclick="qdFill(false)">Fill working days</button><button type="button" class="chip" onclick="qdFill(true)">All 0</button></div>
+      <div id="qdDays">${st?qdDaysHtml(st):'<div class="muted" style="padding:14px 4px;font-size:13px">Choose a team member above to set the hours.</div>'}</div>
+      <div class="muted" style="font-size:12px;margin-top:6px">Enter hours per day (quarter-hour steps ok, e.g. 5.25, 7.5; 0 = day off). Bank hol still comes off the holiday allowance. Set a day to 0 to clear it.</div>
+    </div>
+    <div class="mf"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="qdSave()">Save</button></div></div></div>`; }
+function qdDaysHtml(st){ let d=parse(qd.from),e=parse(qd.to); if(e<d){const t=d;d=e;e=t;}
+  let n=0,total=0,rows=''; 
+  while(d<=e&&n<62){ const ds=iso(d); const ex=state.absences.find(a=>a.staffId===qd.id&&a.start===ds&&a.end===ds); const v=(ds in qd.hrs)?qd.hrs[ds]:(ex?ex.hours:qdDefault(st,ds)); total+=Number(v)||0;
+    const dow=parse(ds).getDay(); const off=!new Set(workset(st)).has(dow); const bh=BANK_HOLIDAYS[ds];
+    rows+=`<div class="qd-row ${off?'off':''}"><span class="qd-d">${DOW[dow]} ${fmt(ds)}${bh?` <span style="color:#7c3aed;font-weight:600">&middot; ${esc(bh)}</span>`:''}</span><input type="number" step="0.25" min="0" id="qh_${ds}" value="${v}" inputmode="decimal" onchange="qd.hrs['${ds}']=this.value" oninput="qdSum()"></div>`;
+    d.setDate(d.getDate()+1); n++; }
+  return `<div class="qd-list">${rows}</div><div class="qd-total">Total <b id="qdTotalV">${round2(total)}</b>h over ${n} day${n===1?'':'s'}</div>`; }
+function qdReadInputs(){ document.querySelectorAll('[id^="qh_"]').forEach(i=>{ qd.hrs[i.id.slice(3)]=i.value; }); }
+function qdRange(){ qdReadInputs(); qd.from=val('qdFrom')||qd.from; qd.to=val('qdTo')||qd.to; const st=state.staff.find(x=>x.id===qd.id); if(st) document.getElementById('qdDays').innerHTML=qdDaysHtml(st); }
+function qdSum(){ let t=0; document.querySelectorAll('[id^="qh_"]').forEach(i=>t+=Number(i.value)||0); const el=document.getElementById('qdTotalV'); if(el)el.textContent=round2(t); }
+function qdFill(zero){ const st=state.staff.find(x=>x.id===qd.id); if(!st){ toast('Choose a team member first'); return; } document.querySelectorAll('[id^="qh_"]').forEach(i=>{ const ds=i.id.slice(3); const v=zero?0:qdDefault(st,ds); i.value=v; qd.hrs[ds]=v; }); qdSum(); }
+function qdType(t){ qd.type=t; document.querySelectorAll('.qd-t').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); }
+function qdSave(){ if(!qd)return; if(!state.staff.find(x=>x.id===qd.id)){ toast('Choose a team member first'); return; } qdReadInputs(); const isBank=qd.type==='bankhol'; const type=qd.type==='sickness'?'sickness':'holiday';
+  let d=parse(qd.from),e=parse(qd.to); if(e<d){const t=d;d=e;e=t;} let added=0,tot=0,n=0;
+  while(d<=e&&n<62){ const ds=iso(d); let h=round2(Number(qd.hrs[ds])||0);
+    const ex=state.absences.find(a=>a.staffId===qd.id&&a.start===ds&&a.end===ds);
+    if(h>0){ if(ex){ ex.hours=h; ex.type=type; ex.bh=isBank; ex.status='approved'; if(!isBank)delete ex.bh; }
+             else state.absences.push({id:s(),staffId:qd.id,type,bh:isBank,start:ds,end:ds,hours:h,status:'approved',note:'',created:iso(new Date())}); added++; tot+=h; }
+    else if(ex) state.absences=state.absences.filter(a=>a!==ex);
+    d.setDate(d.getDate()+1); n++; }
+  save(); closeModal(); renderAll(); toast((type==='sickness'?'Sickness':isBank?'Bank holiday':'Holiday')+`: ${added} day${added===1?'':'s'}, ${round2(tot)}h`); }
+
+/* ===== COVERAGE TAB ===== */
+function renderCoverage(){
+  const ds=document.getElementById('covDate').value||iso(new Date()); const mount=document.getElementById('covCards');
+  const bh=BANK_HOLIDAYS[ds]; let html='';
+  if(isClosed(ds)){ mount.innerHTML=`<div class="covcard" style="grid-column:1/-1"><h3>Store closed <span class="status bad">Bank holiday</span></h3><div class="muted" style="font-size:13px">${esc(bh)} &middot; no cover required.</div></div>`; return; }
+  ['Pharmacy','Retail'].forEach(dp=>{ const team=state.staff.filter(x=>x.dept===dp); if(!team.length)return;
+    const off=offOnDate(ds,dp); const prov=state.absences.filter(a=>a.status==='requested'&&a.start<=ds&&a.end>=ds&&team.some(t=>t.id===a.staffId));
+    const avail=team.length-off.length; const mc=minCover(dp); const ok=avail>=mc;
+    html+=`<div class="covcard"><h3>${dp} <span class="status ${ok?'ok':'bad'}">${ok?'OK':'Below cover'}</span></h3>
+      <div class="big">${avail}<span style="font-size:14px;font-weight:600;color:var(--mut)"> / ${team.length} available</span></div>
+      <div class="muted" style="font-size:12px">Minimum cover ${mc}${bh?' &middot; '+esc(bh):''}</div>`;
+    if(off.length){ html+='<div class="offlist"><strong>Off:</strong>'; off.forEach(st=>{ const a=state.absences.find(x=>x.staffId===st.id&&x.start<=ds&&x.end>=ds&&(x.type==='sickness'||x.status==='approved')); html+=`<div>${esc(st.name)} &middot; ${TYPES[a.type]}</div>`; }); html+='</div>'; }
+    if(prov.length){ html+='<div class="offlist"><strong>Provisional:</strong>'; prov.forEach(a=>{ const st=state.staff.find(x=>x.id===a.staffId); html+=`<div>${esc(st?st.name:'?')}</div>`; }); html+='</div>'; }
+    html+='</div>'; });
+  mount.innerHTML=html||'<div class="empty">No staff yet</div>';
+}
+
+/* ===== BOOKING SHEET ===== */
+function firstName(n){ return String(n||'').split(' ')[0]; }
+function renderBookcal(){
+  const dEl=document.getElementById('bkDept'); if(!dEl)return; const dept=dEl.value||'all';
+  const showNames=document.getElementById('bkNames').checked; const incSick=document.getElementById('bkSick').checked;
+  document.getElementById('bkYear').textContent=leaveYearLabel();
+  const depts=dept==='all'?['Pharmacy','Retail']:[dept];
+  let html='';
+  depts.forEach(dp=>{ const team=state.staff.filter(x=>x.dept===dp); if(!team.length)return;
+    html+=`<div class="bookcal"><h3 style="margin:16px 0 8px">${dp} <span class="muted" style="font-size:12px;font-weight:500">&middot; one off at a time &middot; December closed</span></h3>${monthsHtml(team,minCover(dp),showNames,incSick)}</div>`; });
+  document.getElementById('bookcalMount').innerHTML=html||'<div class="empty">No staff yet</div>';
+}
+function monthsHtml(team,mc,showNames,incSick){
+  const{start,end}=yearBounds(currentYear); let blocks=''; let cur=new Date(start.getFullYear(),start.getMonth(),1);
+  while(cur<=end){ blocks+=monthBlock(cur.getFullYear(),cur.getMonth(),team,mc,showNames,incSick); cur.setMonth(cur.getMonth()+1); }
+  return `<div class="bkgrid">${blocks}</div>`;
+}
+function monthBlock(y,mo,team,mc,showNames,incSick){
+  const first=new Date(y,mo,1); const dim=new Date(y,mo+1,0).getDate(); const lead=(first.getDay()+6)%7;
+  const dows=['M','T','W','T','F','S','S']; let cells=dows.map(x=>`<div class="bkdow">${x}</div>`).join('');
+  for(let i=0;i<lead;i++) cells+='<div class="bkday bk-none"></div>';
+  for(let d=1;d<=dim;d++){ const dt=new Date(y,mo,d); const ds=iso(dt); const dow=dt.getDay(); const bh=BANK_HOLIDAYS[ds];
+    const scheduled=team.filter(st=>workset(st).indexOf(dow)>-1);
+    const onHol=team.filter(st=>state.absences.some(a=>a.staffId===st.id&&a.type==='holiday'&&a.status==='approved'&&a.start<=ds&&a.end>=ds));
+    const prov=team.filter(st=>state.absences.some(a=>a.staffId===st.id&&a.type==='holiday'&&a.status==='requested'&&a.start<=ds&&a.end>=ds));
+    const onSick=incSick?team.filter(st=>state.absences.some(a=>a.staffId===st.id&&a.type==='sickness'&&a.start<=ds&&a.end>=ds)):[];
+    const onHolSched=scheduled.filter(st=>onHol.indexOf(st)>-1).length;
+    const onSickSched=scheduled.filter(st=>onSick.indexOf(st)>-1).length;
+    const offCount=onHolSched+onSickSched;
+    const present=scheduled.length-offCount;
+    const closed=isClosed(ds); const dec=mo===11;
+    let cls='bk-none', why='Not scheduled';
+    if(closed){ cls='bk-none'; why='Closed'; }
+    else if(dec){ cls='bk-full'; why='December \u2013 closed to holiday'; }
+    else if(scheduled.length===0){ cls='bk-none'; why='No one scheduled'; }
+    else if(offCount>=1){ cls='bk-full'; why='One already off \u2013 no second in this team'; }
+    else { const after=present-1; if(after<1){ cls='bk-full'; why='Would leave no cover'; } else if(after===1){ cls='bk-tight'; why='Last slot'; } else { cls='bk-open'; why='Open'; } }
+    let names=''; if(!closed&&showNames){ names=onHol.map(st=>`<span class="nm">${esc(firstName(st.name))}</span>`).join('')
+      +prov.map(st=>`<span class="nm" style="color:#9a7b00;font-style:italic">${esc(firstName(st.name))}?</span>`).join('')
+      +onSick.map(st=>`<span class="nm" style="color:#b91c1c">${esc(firstName(st.name))} (off)</span>`).join(''); }
+    if(closed) names='<span class="nm" style="color:#94a3b8">closed</span>';
+    const sk=(!closed&&onSick.length)?' sk':'';
+    cells+=`<div class="bkday ${cls}${sk} ${bh?'bh':''}" title="${why}${scheduled.length?` \u00b7 ${present}/${scheduled.length} in`:''}${bh&&!closed?' \u00b7 '+esc(bh):''}"><span class="dn">${d}</span>${names}</div>`;
+  }
+  return `<div class="bkmonth"><h4>${first.toLocaleDateString('en-GB',{month:'long',year:'numeric'})}</h4><div class="bkdays">${cells}</div></div>`;
+}
+
+/* ===== MONTHLY PRINT (one month per A4 landscape page, hours per box) ===== */
+function printMonthly(){ renderMonthPrint(); printView('monthprint'); }
+function printTarget(y,off){ const m0=(state.settings.yearStartMonth||1)-1; return {yy:y+Math.floor((m0+off)/12), mo:(m0+off)%12}; }
+function openPrintDialog(){
+  const now=new Date().getFullYear(); const maxY=Math.max(now+2, Number(state.settings.maxYear)||0, currentYear); const m1=state.settings.yearStartMonth||1;
+  let yopts=''; for(let y=2026;y<=maxY;y++) yopts+=`<option value="${y}" ${y===currentYear?'selected':''}>${m1===1?y:(y+'/'+String(y+1).slice(2))}</option>`;
+  const t=new Date(); const curOff=(t.getFullYear()-currentYear)*12+(t.getMonth()+1-m1);
+  let mopts=''; for(let o=0;o<12;o++){ const {yy,mo}=printTarget(currentYear,o); const lab=new Date(yy,mo,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'}); mopts+=`<option value="${o}" ${o===(curOff>=0&&curOff<12?curOff:0)?'selected':''}>${lab}</option>`; }
+  document.getElementById('modalMount').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal qd">
+    <div class="mh"><h3>Print month</h3><button class="x" onclick="closeModal()">&times;</button></div>
+    <div class="mb">
+      <div class="qd-when">
+        <label>Leave year<select id="prYear" onchange="prYearChanged()">${yopts}</select></label>
+        <label>Month<select id="prMonth">${mopts}</select></label>
+      </div>
+      <div class="muted" style="font-size:12px">Prints that month for the whole team, A4 landscape, hours shown in each day.</div>
+    </div>
+    <div class="mf"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="doPrintMonth()">Print</button></div></div></div>`; }
+function prYearChanged(){ const y=Number(val('prYear')); const sel=document.getElementById('prMonth'); const keep=Number(sel.value)||0; let mopts='';
+  for(let o=0;o<12;o++){ const {yy,mo}=printTarget(y,o); const lab=new Date(yy,mo,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'}); mopts+=`<option value="${o}" ${o===keep?'selected':''}>${lab}</option>`; } sel.innerHTML=mopts; }
+function doPrintMonth(){ const y=Number(val('prYear')), off=Number(val('prMonth'))||0; const {yy,mo}=printTarget(y,off);
+  const order=['Pharmacy','Retail','Management']; const rk=d=>{const i=order.indexOf(d);return i<0?99:i;};
+  const staff=[...state.staff].sort((a,b)=>rk(a.dept)-rk(b.dept)||a.name.localeCompare(b.name));
+  document.getElementById('monthprintMount').innerHTML=monthPrintTable(yy,mo,staff);
+  closeModal(); printView('monthprint'); }
+function renderMonthPrint(){
+  const{start,end}=yearBounds(currentYear); const order=['Pharmacy','Retail','Management'];
+  const rk=d=>{const i=order.indexOf(d);return i<0?99:i;};
+  const staff=[...state.staff].sort((a,b)=>rk(a.dept)-rk(b.dept)||a.name.localeCompare(b.name));
+  let html=''; let cur=new Date(start.getFullYear(),start.getMonth(),1);
+  while(cur<=end){ html+=monthPrintTable(cur.getFullYear(),cur.getMonth(),staff); cur.setMonth(cur.getMonth()+1); }
+  document.getElementById('monthprintMount').innerHTML=html;
+}
+function monthPrintTable(y,mo,staff){
+  const dim=new Date(y,mo+1,0).getDate(); const DOWL=['S','M','T','W','T','F','S'];
+  const label=new Date(y,mo,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  let head='<th class="nm">Store 1478 &middot; '+label+'</th>';
+  for(let d=1;d<=dim;d++){ const dt=new Date(y,mo,d); const dow=dt.getDay(); const we=dow===0||dow===6; const bh=BANK_HOLIDAYS[iso(dt)];
+    head+=`<th class="${we?'we':''} ${bh?'bh':''}">${d}<br>${DOWL[dow]}</th>`; }
+  let rows=''; let lastDept=null;
+  staff.forEach(st=>{ if(st.dept!==lastDept){ lastDept=st.dept; rows+=`<tr class="mp-grp"><td colspan="${dim+1}">${st.dept}</td></tr>`; }
+    let r='<td class="nm">'+esc(st.name)+'</td>';
+    for(let d=1;d<=dim;d++){ const dt=new Date(y,mo,d); const ds=iso(dt); const dow=dt.getDay(); const we=dow===0||dow===6; const bh=BANK_HOLIDAYS[ds];
+      const a=state.absences.find(x=>x.staffId===st.id&&x.start<=ds&&x.end>=ds);
+      const closed=isClosed(ds);
+      let cls='day'; if(we)cls+=' we'; if(bh)cls+=' bh'; if(closed)cls+=' closed'; let content='';
+      if(closed){ if(workset(st).indexOf(dow)>-1){ const h=round2(dailyHours(st)); if(h>0)content=`<span class="vhrs">${h}</span>`; } }
+      else if(a){ if(a.type==='sickness'){ cls+=' sick'; content='<span class="vhrs">S</span>'; }
+        else if(a.type==='holiday'){ cls+= a.bh?' holbh':(a.status==='approved'?' hol':' holp');
+          if(workset(st).indexOf(dow)>-1){ const wd=workDaysInRange(st,a.start,a.end); const h=wd<=1?a.hours:round2(a.hours/wd); if(h>0)content=`<span class="vhrs">${h}</span>`; } }
+        else { cls+=' other'; if(a.hours>0)content=`<span class="vhrs">${a.hours}</span>`; } }
+      r+=`<td class="${cls}">${content}</td>`;
+    }
+    rows+='<tr>'+r+'</tr>';
+  });
+  return `<div class="mp-month"><table class="mp"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+/* ===== BALANCES ===== */
+function renderBalances(){
+  const rows=[...state.staff].sort((a,b)=>a.dept.localeCompare(b.dept)||a.name.localeCompare(b.name)); let tE=0,tTk=0,tBk=0,tP=0,tB=0;
+  let html='<thead><tr><th>Name</th><th>Dept</th><th class="num">h/wk</th><th class="num">Entitlement</th><th class="num">Carry</th><th class="num">Taken</th><th class="num">Booked</th><th class="num">Bank hols</th><th class="num">Provisional</th><th class="num">Remaining</th></tr></thead><tbody>';
+  rows.forEach(st=>{ const ent=entitlement(st),sp=holidaySplit(st.id,currentYear),pd=holidayTaken(st.id,currentYear,'requested'),bh=bankHolidayHours(st,currentYear),rem=round2(ent-sp.taken-sp.booked-bh); tE+=ent;tTk+=sp.taken;tBk+=sp.booked;tP+=pd;tB+=bh;
+    const pct=ent>0?rem/ent:0; const cls=rem<0?'bal-bad':pct<0.2?'bal-warn':'bal-ok';
+    html+=`<tr><td><strong>${esc(st.name)}</strong></td><td>${st.dept}</td><td class="num">${st.weekly}</td><td class="num">${ent}</td><td class="num">${Number(st.carry)||0}</td><td class="num">${sp.taken||'&ndash;'}</td><td class="num">${sp.booked||'&ndash;'}</td><td class="num">${bh||'&ndash;'}</td><td class="num">${pd||'&ndash;'}</td><td class="num ${cls}">${rem}h</td></tr>`; });
+  html+=`</tbody><tfoot><tr style="font-weight:700;background:#f7f8fc"><td colspan="3">Totals</td><td class="num">${round2(tE)}</td><td></td><td class="num">${round2(tTk)}</td><td class="num">${round2(tBk)}</td><td class="num">${round2(tB)||'&ndash;'}</td><td class="num">${round2(tP)||'&ndash;'}</td><td class="num">${round2(tE-tTk-tBk-tB)}h</td></tr></tfoot>`;
+  document.getElementById('balTable').innerHTML=html;
+  document.getElementById('balKpi').innerHTML=`<div class="card"><div class="v">${round2(tE)}h</div><div class="k">Total entitlement</div></div><div class="card"><div class="v">${round2(tTk)}h</div><div class="k">Taken to date</div></div><div class="card"><div class="v">${round2(tBk)}h</div><div class="k">Booked ahead</div></div><div class="card"><div class="v">${round2(tE-tTk-tBk-tB)}h</div><div class="k">Remaining</div></div>`;
+  document.getElementById('multLabel').textContent=state.settings.mult;
+}
+
+/* ===== LOG ===== */
+function fillStaffSelect(){ const sel=document.getElementById('logStaff'); if(!sel)return; sel.innerHTML=state.staff.map(st=>`<option value="${st.id}">${esc(st.name)} &middot; ${st.dept}</option>`).join(''); }
+function suggestHours(){ const st=state.staff.find(x=>x.id===document.getElementById('logStaff').value); const a=val('logStart'),b=val('logEnd'),type=val('logType'); const hint=document.getElementById('hoursHint');
+  if(st&&a&&b&&b>=a){ const wd=workDaysInRange(st,a,b); const h=round2(wd*dailyHours(st)); if(!val('logHours'))document.getElementById('logHours').value=h; hint.textContent=`(${wd} working days \u00d7 ${round2(dailyHours(st))}h)`; } else hint.textContent='';
+  // coverage hint for start date
+  const box=document.getElementById('logCover');
+  if(st&&a){ const off=offOnDate(a,st.dept).length; const total=state.staff.filter(x=>x.dept===st.dept).length; const availAfter=total-off-1; const mc=minCover(st.dept);
+    box.innerHTML=`<div class="hint ${availAfter<mc?'bad':off?'some':'ok'}">${st.dept} on ${fmt(a)}: ${off} already off. If confirmed, ${availAfter} of ${total} left (min ${mc}).</div>`; } else box.innerHTML='';
+}
+function saveLog(){ const st=state.staff.find(x=>x.id===document.getElementById('logStaff').value); const a=val('logStart'),b=val('logEnd'),type=val('logType');
+  if(!st||!a||!b){ logMsg('Pick staff and dates','bad'); return; } if(b<a){ logMsg('End is before start','bad'); return; }
+  const hours=Number(val('logHours'))||(type==='holiday'?round2(workDaysInRange(st,a,b)*dailyHours(st)):0);
+  state.absences.push({id:s(),staffId:st.id,type,start:a,end:b,hours,status:val('logStatus'),note:val('logNote'),created:iso(new Date())});
+  save(); clearLog(); renderAll(); logMsg('Absence added','ok'); toast('Absence added'); }
+function clearLog(){ ['logStart','logEnd','logHours','logNote'].forEach(id=>document.getElementById(id).value=''); document.getElementById('hoursHint').textContent=''; document.getElementById('logCover').innerHTML=''; }
+function logMsg(t,k){ const e=document.getElementById('logMsg'); e.textContent=t; e.style.color=k==='bad'?'var(--bad)':'var(--ok)'; setTimeout(()=>e.textContent='',3000); }
+function renderLog(){ const f=val('logFilter')||'all'; let list=[...state.absences].sort((a,b)=>b.start.localeCompare(a.start));
+  if(f==='requested')list=list.filter(a=>a.status==='requested'); else if(f!=='all')list=list.filter(a=>a.type===f);
+  let html='<thead><tr><th>Name</th><th>Type</th><th>Dates</th><th class="num">Hours</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody>';
+  list.slice(0,300).forEach(a=>{ const st=state.staff.find(x=>x.id===a.staffId); if(!st)return;
+    html+=`<tr><td><strong>${esc(st.name)}</strong></td><td><span class="tag ${a.type==='holiday'?'hol':a.type==='sickness'?'sick':'other'}">${TYPES[a.type]}</span></td><td>${fmt(a.start)} &ndash; ${fmt(a.end)}</td><td class="num">${a.hours||'&ndash;'}</td><td><span class="tag ${a.status==='approved'?'appr':'pend'}">${statusLabel(a.status)}</span></td><td class="muted">${esc(a.note||'')}</td><td style="text-align:right;white-space:nowrap"><button class="btn ghost sm" onclick="openEdit(getAbs('${a.id}'))">Edit</button> <button class="btn danger sm" onclick="delAbs('${a.id}')">Delete</button></td></tr>`; });
+  if(!list.length)html+='<tr><td colspan="7" class="empty">No entries yet</td></tr>'; html+='</tbody>'; document.getElementById('logTable').innerHTML=html; }
+function getAbs(id){ return state.absences.find(a=>a.id===id); }
+function delAbs(id){ if(!confirm('Delete this absence?'))return; state.absences=state.absences.filter(a=>a.id!==id); save(); renderAll(); }
+
+/* ===== EDIT MODAL ===== */
+function openEdit(a,isNew){ const opts=state.staff.map(st=>`<option value="${st.id}" ${st.id===a.staffId?'selected':''}>${esc(st.name)} &middot; ${st.dept}</option>`).join('');
+  const typeOpt=Object.entries(TYPES).map(([k,v])=>`<option value="${k}" ${a.type===k?'selected':''}>${v}</option>`).join('');
+  document.getElementById('modalMount').innerHTML=`<div class="overlay"><div class="modal"><div class="mh"><h3>${isNew?'Log absence':'Edit absence'}</h3><button class="x" onclick="closeModal()">&times;</button></div>
+    <div class="mb"><input type="hidden" id="eId" value="${isNew?'':a.id}"><div class="grid-form">
+      <label class="f" style="grid-column:1/-1">Staff<select id="eStaff" onchange="eSuggest()">${opts}</select></label>
+      <label class="f">Type<select id="eType" onchange="eSuggest()">${typeOpt}</select></label>
+      <label class="f">Status<select id="eStatus"><option value="approved" ${a.status==='approved'?'selected':''}>Confirmed</option><option value="requested" ${a.status==='requested'?'selected':''}>Provisional</option></select></label>
+      <label class="f">Start<input type="date" id="eStart" value="${a.start}" onchange="eSuggest()"></label>
+      <label class="f">End<input type="date" id="eEnd" value="${a.end}" onchange="eSuggest()"></label>
+      <label class="f">Hours <span class="muted" id="eHint"></span><input type="number" step="0.25" id="eHours" value="${a.hours||''}"></label>
+      <label class="f" style="grid-column:1/-1">Note<input type="text" id="eNote" value="${esc(a.note||'')}"></label></div>
+      <div id="eCover"></div></div>
+    <div class="mf">${isNew?'':'<button class="btn danger" style="margin-right:auto" onclick="delFromModal()">Delete</button>'}<button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveEdit()">${isNew?'Add':'Save'}</button></div></div></div>`;
+  eSuggest(); }
+function eSuggest(){ const st=state.staff.find(x=>x.id===val('eStaff')); const a=val('eStart'),b=val('eEnd');
+  if(st&&a&&b&&b>=a&&val('eType')==='holiday'){ const wd=workDaysInRange(st,a,b); document.getElementById('eHint').textContent=`(${wd}d \u00d7 ${round2(dailyHours(st))}h = ${round2(wd*dailyHours(st))}h)`; if(!val('eHours'))document.getElementById('eHours').value=round2(wd*dailyHours(st)); } else document.getElementById('eHint').textContent='';
+  const box=document.getElementById('eCover');
+  if(st&&a){ const off=offOnDate(a,st.dept).filter(x=>x.id!==st.id).length; const total=state.staff.filter(x=>x.dept===st.dept).length; const mc=minCover(st.dept); const availAfter=total-off-1;
+    box.innerHTML=`<div class="hint ${availAfter<mc?'bad':off?'some':'ok'}">${st.dept} on ${fmt(a)}: ${off} other${off===1?'':'s'} off. Leaves ${availAfter}/${total} (min ${mc}).</div>`; } else box.innerHTML=''; }
+function closeModal(){ document.getElementById('modalMount').innerHTML=''; }
+function saveEdit(){ const id=val('eId'),a=val('eStart'),b=val('eEnd'); if(!a||!b||b<a){ toast('Check the dates'); return; }
+  const rec={staffId:val('eStaff'),type:val('eType'),start:a,end:b,hours:Number(val('eHours'))||0,status:val('eStatus'),note:val('eNote')};
+  if(id)Object.assign(getAbs(id),rec); else { rec.id=s(); rec.created=iso(new Date()); state.absences.push(rec); }
+  save(); closeModal(); renderAll(); toast('Saved'); }
+function delFromModal(){ const id=val('eId'); if(id&&confirm('Delete this absence?')){ state.absences=state.absences.filter(a=>a.id!==id); save(); closeModal(); renderAll(); } }
+
+/* ===== SICKNESS ===== */
+function renderSickness(){ const{start,end}=yearBounds(currentYear); const sI=iso(start),eI=iso(end);
+  const now=new Date(); const from=new Date(now); from.setDate(from.getDate()-364); const fromIso=iso(from); let sO=0,sD=0;
+  const rows=[...state.staff].sort((a,b)=>a.name.localeCompare(b.name)).map(st=>{
+    const yr=state.absences.filter(a=>a.type==='sickness'&&a.staffId===st.id&&a.start<=eI&&a.end>=sI); const occ=yr.length; let days=0;
+    yr.forEach(a=>{ const s2=a.start<sI?sI:a.start,e2=a.end>eI?eI:a.end; days+=daysBetween(s2,e2)+1; });
+    const bfS=state.absences.filter(a=>a.type==='sickness'&&a.staffId===st.id&&a.end>=fromIso); let bfD=0; bfS.forEach(a=>{ bfD+=daysBetween(a.start<fromIso?fromIso:a.start,a.end)+1; });
+    sO+=occ; sD+=days; return {st,occ,days,bf:bfS.length*bfS.length*bfD}; });
+  let html='<thead><tr><th>Name</th><th>Dept</th><th class="num">Occurrences</th><th class="num">Total days</th><th class="num">Bradford (52wk)</th><th>Band</th></tr></thead><tbody>';
+  rows.sort((a,b)=>b.bf-a.bf||b.days-a.days).forEach(r=>{ const band=r.bf>=125?['Review','bal-bad']:r.bf>=51?['Monitor','bal-warn']:r.occ>0?['OK','bal-ok']:['&ndash;','muted'];
+    html+=`<tr><td><strong>${esc(r.st.name)}</strong></td><td>${r.st.dept}</td><td class="num">${r.occ}</td><td class="num">${r.days}</td><td class="num ${band[1]}">${r.bf}</td><td class="${band[1]}">${band[0]}</td></tr>`; });
+  if(!rows.length)html+='<tr><td colspan="6" class="empty">No staff</td></tr>';
+  html+=`</tbody><tfoot><tr style="font-weight:700;background:#f7f8fc"><td colspan="2">Store total</td><td class="num">${sO}</td><td class="num">${sD}</td><td colspan="2"></td></tr></tfoot>`;
+  document.getElementById('sickTable').innerHTML=html; }
+
+/* ===== STAFF ===== */
+function renderStaff(){ let html='<thead><tr><th>Name</th><th>Dept</th><th class="num">h/wk</th><th>Working days</th><th class="num">Entitlement</th><th class="num">Carry</th><th>Note</th><th></th></tr></thead><tbody>';
+  [...state.staff].sort((a,b)=>a.dept.localeCompare(b.dept)||a.name.localeCompare(b.name)).forEach(st=>{
+    const dl=workset(st).slice().sort((a,b)=>((a+6)%7)-((b+6)%7)).map(d=>DOW[d]).join(' ');
+    html+=`<tr><td><strong>${esc(st.name)}</strong></td><td>${st.dept}</td><td class="num">${st.weekly}</td><td style="font-size:12px">${dl}</td><td class="num">${entitlement(st)}${(st.ent!=null&&st.ent!=='')?'':' <span class="muted" style="font-weight:400">(auto)</span>'}</td><td class="num">${Number(st.carry)||0}</td><td class="muted">${esc(st.note||'')}</td><td style="text-align:right;white-space:nowrap"><button class="btn ghost sm" onclick="openStaff('${st.id}')">Edit</button> <button class="btn danger sm" onclick="delStaff('${st.id}')">Remove</button></td></tr>`; });
+  html+='</tbody>'; document.getElementById('staffTable').innerHTML=html; }
+function openStaff(id){ const st=id?state.staff.find(x=>x.id===id):{name:'',dept:'Retail',weekly:37.5,workset:[1,2,3,4,5],ent:'',carry:0,note:''}; const set=new Set(workset(st));
+  const order=[1,2,3,4,5,6,0]; const chips=order.map(d=>`<label><input type="checkbox" value="${d}" ${set.has(d)?'checked':''}>${DOW[d]}</label>`).join('');
+  document.getElementById('modalMount').innerHTML=`<div class="overlay"><div class="modal"><div class="mh"><h3>${id?'Edit staff':'Add staff'}</h3><button class="x" onclick="closeModal()">&times;</button></div>
+    <div class="mb"><input type="hidden" id="stId" value="${id||''}"><div class="grid-form">
+      <label class="f" style="grid-column:1/-1">Name<input id="stName" value="${esc(st.name)}"></label>
+      <label class="f">Department<select id="stDept"><option ${st.dept==='Pharmacy'?'selected':''}>Pharmacy</option><option ${st.dept==='Retail'?'selected':''}>Retail</option><option ${st.dept==='Management'?'selected':''}>Management</option></select></label>
+      <label class="f">Contracted h/week<input type="number" step="0.25" id="stWeekly" value="${st.weekly}"></label>
+      <label class="f">Entitlement hours <span class="muted">(blank=auto)</span><input type="number" step="0.25" id="stEnt" value="${st.ent==null?'':st.ent}"></label>
+      <label class="f">Carry-over hours<input type="number" step="0.25" id="stCarry" value="${Number(st.carry)||0}"></label></div>
+      <div style="margin-top:14px"><div style="font-size:12px;font-weight:600;color:var(--mut);margin-bottom:6px">Working days</div><div class="daychips" id="stDays">${chips}</div></div>
+      <label class="f" style="margin-top:14px">Note<input id="stNote" value="${esc(st.note||'')}"></label></div>
+    <div class="mf"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveStaff()">Save</button></div></div></div>`; }
+function saveStaff(){ const id=val('stId'); const name=val('stName').trim(); if(!name){ toast('Enter a name'); return; }
+  const ws=[...document.querySelectorAll('#stDays input:checked')].map(c=>Number(c.value)); if(!ws.length){ toast('Pick at least one working day'); return; }
+  const rec={name,dept:val('stDept'),weekly:Number(val('stWeekly'))||0,workset:ws,ent:val('stEnt')===''?null:Number(val('stEnt')),carry:Number(val('stCarry'))||0,note:val('stNote')};
+  if(id)Object.assign(state.staff.find(x=>x.id===id),rec); else { rec.id=s(); state.staff.push(rec); }
+  save(); closeModal(); renderAll(); toast('Staff saved'); }
+function delStaff(id){ const st=state.staff.find(x=>x.id===id); if(!confirm(`Remove ${st.name}? Their past absences stay in the records.`))return; state.staff=state.staff.filter(x=>x.id!==id); save(); renderAll(); }
+
+/* ===== PROVISIONAL ===== */
+function renderRequests(){ const reqs=state.absences.filter(a=>a.status==='requested').sort((a,b)=>a.start.localeCompare(b.start));
+  document.getElementById('reqCount').innerHTML=reqs.length?`<span class="tag pend" style="margin-left:4px">${reqs.length}</span>`:'';
+  let html='<thead><tr><th>Name</th><th>Type</th><th>Dates</th><th class="num">Hours</th><th>Note</th><th class="num">Remaining if confirmed</th><th></th></tr></thead><tbody>';
+  reqs.forEach(a=>{ const st=state.staff.find(x=>x.id===a.staffId); if(!st)return; const rem=round2(entitlement(st)-holidayTaken(st.id,currentYear)-bankHolidayHours(st,currentYear)-Number(a.hours||0));
+    html+=`<tr><td><strong>${esc(st.name)}</strong></td><td><span class="tag ${a.type==='holiday'?'hol':'other'}">${TYPES[a.type]}</span></td><td>${fmt(a.start)} &ndash; ${fmt(a.end)}</td><td class="num">${a.hours||'&ndash;'}</td><td class="muted">${esc(a.note||'')}</td><td class="num ${rem<0?'bal-bad':''}">${rem}h</td><td style="text-align:right;white-space:nowrap"><button class="btn sm" onclick="approveReq('${a.id}')">Confirm</button> <button class="btn danger sm" onclick="declineReq('${a.id}')">Remove</button></td></tr>`; });
+  if(!reqs.length)html+='<tr><td colspan="7" class="empty">Nothing pencilled in</td></tr>'; html+='</tbody>'; document.getElementById('reqTable').innerHTML=html; }
+function approveReq(id){ const a=getAbs(id); if(a){ a.status='approved'; save(); renderAll(); toast('Confirmed'); } }
+function declineReq(id){ if(!confirm('Remove this provisional holiday?'))return; state.absences=state.absences.filter(a=>a.id!==id); save(); renderAll(); toast('Removed'); }
+
+/* ===== SETTINGS ===== */
+function saveSettings(){ state.settings.pass=val('setPass')||'1478'; state.settings.mult=Number(val('setMult'))||5.6; const nm=Number(val('setYearStart'))||1;
+  const changed=nm!==state.settings.yearStartMonth; state.settings.yearStartMonth=nm;
+  state.settings.minCover={Pharmacy:Number(val('setCovPh'))||0,Retail:Number(val('setCovRt'))||0};
+  state.settings.closedOnBH=document.getElementById('setClosed').checked;
+  if(changed) currentYear=computeLeaveYear(nm);
+  save(); buildYearSel(); renderAll(); toast('Settings saved'); }
+
+/* ===== DATA ===== */
+function exportData(){ const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`1478-absence-${iso(new Date())}.json`; a.click(); }
+function importData(ev){ const f=ev.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); if(!d.staff||!d.absences)throw 0; state=d; state.staff.forEach(migrateStaff); saveLocal(); currentYear=state.year||currentYear; boot(); toast('Backup imported'); }catch(e){ toast('That file could not be read'); } }; r.readAsText(f); ev.target.value=''; }
+function wipeYear(){ if(!confirm(`Clear all absences within ${leaveYearLabel()}? Staff and settings are kept.`))return; const{start,end}=yearBounds(currentYear); state.absences=state.absences.filter(a=>!(parse(a.start)<=end&&parse(a.end)>=start)); save(); renderAll(); toast('Year cleared'); }
+
+/* ===== SYNC ===== */
+function loadSyncForm(){ document.getElementById('syncEnabled').checked=!!syncCfg.enabled; document.getElementById('syncOwner').value=syncCfg.owner||''; document.getElementById('syncRepo').value=syncCfg.repo||''; document.getElementById('syncPath').value=syncCfg.path||'data/absence.json'; document.getElementById('syncBranch').value=syncCfg.branch||'main'; document.getElementById('syncToken').value=syncCfg.token||''; document.getElementById('syncEnc').value=syncCfg.enc||''; }
+function saveSync(){ syncCfg.enabled=document.getElementById('syncEnabled').checked; syncCfg.owner=val('syncOwner').trim(); syncCfg.repo=val('syncRepo').trim(); syncCfg.path=val('syncPath').trim()||'data/absence.json'; syncCfg.branch=val('syncBranch').trim()||'main'; syncCfg.token=val('syncToken').trim(); syncCfg.enc=val('syncEnc'); syncCfg.sha=null; saveSyncCfg(); updateSyncDot();
+  if(syncCfg.enabled){ if(!syncCfg.owner||!syncCfg.repo||!syncCfg.token){ toast('Owner, repo and token are required'); return; } cloudLoad(true); } else toast('Sync disabled'); }
+function updateSyncDot(){ const d=document.getElementById('syncDot'),t=document.getElementById('syncText'); if(!syncCfg||!syncCfg.enabled){ d.className='syncdot'; t.textContent='Local only'; } else { d.className='syncdot on'; t.textContent='Synced'; } }
+function setSyncStatus(msg,kind){ const d=document.getElementById('syncDot'),t=document.getElementById('syncText'); if(!syncCfg.enabled)return; d.className='syncdot '+(kind||'on'); t.textContent=msg; }
+function ghUrl(withRef){ return `https://api.github.com/repos/${syncCfg.owner}/${syncCfg.repo}/contents/${syncCfg.path}`+(withRef?`?ref=${encodeURIComponent(syncCfg.branch||'main')}`:''); }
+function ghHeaders(){ return {'Authorization':'Bearer '+syncCfg.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}; }
+async function cloudLoad(manual){ if(!syncCfg.enabled)return; setSyncStatus('Loading...','busy');
+  try{ const res=await fetch(ghUrl(true),{headers:ghHeaders()});
+    if(res.status===404){ setSyncStatus('No file yet','busy'); if(manual)toast('No cloud file yet - use "Save to cloud now" to create it'); return; }
+    if(res.status===401||res.status===403){ setSyncStatus('Auth failed','err'); if(manual)toast('Token rejected - check the access token'); return; }
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json(); syncCfg.sha=data.sha; saveSyncCfg();
+    let content=fromB64(String(data.content||'').replace(/\n/g,''));
+    let jsonStr=content.startsWith('ENC1:')?await decryptPayload(content,syncCfg.enc):content;
+    const parsed=JSON.parse(jsonStr); if(!parsed.staff)throw new Error('bad file'); state=parsed; state.staff.forEach(migrateStaff); saveLocal(); currentYear=state.year||currentYear;
+    buildYearSel(); renderAll(); setSyncStatus('Synced '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})); if(manual)toast('Loaded from cloud');
+  }catch(e){ setSyncStatus('Load error','err'); if(manual)toast('Load failed: '+e.message); } }
+async function cloudSave(manual){ if(!syncCfg.enabled)return; setSyncStatus('Saving...','busy');
+  try{ let jsonStr=JSON.stringify(state); let payload=syncCfg.enc?await encryptPayload(jsonStr,syncCfg.enc):jsonStr; let b64=toB64(payload);
+    const body={message:'Update absence data '+new Date().toISOString(),content:b64,branch:syncCfg.branch||'main'}; if(syncCfg.sha)body.sha=syncCfg.sha;
+    let res=await fetch(ghUrl(),{method:'PUT',headers:ghHeaders(),body:JSON.stringify(body)});
+    if(res.status===409||res.status===422){
+      const overwrite = manual && confirm('The cloud copy has newer changes (saved from another device or tab).\n\nOK = overwrite the cloud with THIS device\'s data\nCancel = keep the cloud version (then use "Load from cloud" to bring it here)');
+      if(overwrite){ const g=await fetch(ghUrl(true),{headers:ghHeaders()}); if(g.ok){ const gd=await g.json(); body.sha=gd.sha; res=await fetch(ghUrl(),{method:'PUT',headers:ghHeaders(),body:JSON.stringify(body)}); } }
+      else { setSyncStatus('Conflict \u2013 another device saved','err'); if(!manual) toast('Cloud has newer changes from another device. Use "Load from cloud" to fetch them, or "Save to cloud now" to overwrite.'); return; }
+    }
+    if(res.status===401||res.status===403){ setSyncStatus('Auth failed','err'); if(manual)toast('Token rejected'); return; }
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json(); syncCfg.sha=data.content.sha; saveSyncCfg(); setSyncStatus('Synced '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})); if(manual)toast('Saved to cloud');
+  }catch(e){ setSyncStatus('Save error','err'); if(manual)toast('Save failed: '+e.message); } }
+
+/* ===== ENCRYPTION ===== */
+function toB64(str){ const b=new TextEncoder().encode(str); let s=''; for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000)); return btoa(s); }
+function fromB64(b64){ const bin=atob(b64); const b=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)b[i]=bin.charCodeAt(i); return new TextDecoder().decode(b); }
+function bytesToB64(bytes){ let s=''; for(let i=0;i<bytes.length;i+=0x8000)s+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000)); return btoa(s); }
+function b64ToBytes(b64){ const bin=atob(b64); const b=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)b[i]=bin.charCodeAt(i); return b; }
+async function deriveKey(pass,salt){ const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']); return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:150000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt','decrypt']); }
+async function encryptPayload(jsonStr,pass){ const salt=crypto.getRandomValues(new Uint8Array(16)); const iv=crypto.getRandomValues(new Uint8Array(12)); const key=await deriveKey(pass,salt); const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(jsonStr))); const out=new Uint8Array(16+12+ct.length); out.set(salt); out.set(iv,16); out.set(ct,28); return 'ENC1:'+bytesToB64(out); }
+async function decryptPayload(text,pass){ if(!pass)throw new Error('encrypted file needs a passphrase'); const raw=b64ToBytes(text.slice(5)); const salt=raw.slice(0,16),iv=raw.slice(16,28),ct=raw.slice(28); const key=await deriveKey(pass,salt); const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,ct); return new TextDecoder().decode(pt); }
+
+/* ===== PRINT ===== */
+function printView(w){ document.querySelectorAll('.view').forEach(v=>v.classList.remove('print-active')); document.getElementById('v-'+w).classList.add('print-active'); window.print(); setTimeout(()=>document.getElementById('v-'+w).classList.remove('print-active'),500); }
+
+/* ===== UTIL ===== */
+function val(id){ const e=document.getElementById(id); return e?e.value:''; }
+function statusLabel(s){ return s==='approved'?'Confirmed':'Provisional'; }
+function esc(str){ return String(str||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toast(t){ const m=document.getElementById('toastMount'); m.innerHTML=`<div class="toast">${esc(t)}</div>`; setTimeout(()=>m.innerHTML='',2200); }
+
+load();
+</script>
+</body>
+</html>
