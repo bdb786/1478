@@ -199,6 +199,7 @@
 .qd-row.off .qd-d{color:#94a3b8;font-weight:500}
 .qd-row input{width:76px;text-align:center;padding:7px;border:1px solid #d7dbe6;border-radius:7px;font-size:15px;font-weight:700}
 .qd-total{padding:9px 4px 2px;font-size:13px;color:#334155;text-align:right}
+.qd-accrual{display:none;margin-top:8px;padding:9px 11px;background:#fffbeb;border:1px solid #fcd34d;border-radius:9px;font-size:12.5px;color:#92400e;line-height:1.45}
 .fab{position:fixed;bottom:26px;right:26px;width:54px;height:54px;border-radius:50%;background:#1e5eff;color:#fff;font-size:30px;line-height:1;border:none;box-shadow:0 6px 18px rgba(30,94,255,.45);cursor:pointer;z-index:60;display:flex;align-items:center;justify-content:center;padding:0 0 3px}
 .fab:hover{background:#1749c9}
 .qd-person{width:100%;padding:9px;border:1px solid #d7dbe6;border-radius:9px;font-size:14px;font-weight:600;margin-bottom:12px;background:#fff}
@@ -336,7 +337,7 @@
       <div class="print-title print-only"><strong>Store 1478 Holiday Balances</strong> &middot; <span class="pyear"></span></div>
       <div class="kpi no-print" id="balKpi"></div>
       <div class="card"><div style="overflow:auto"><table id="balTable"></table></div></div>
-      <p class="muted" style="font-size:12px;margin-top:8px">Entitlement = contracted hours &times; <span id="multLabel">5.6</span> weeks (inclusive of bank holidays), plus carry-over. Taken = holiday already used to date; Booked = holiday scheduled ahead. Remaining = entitlement &minus; taken &minus; booked &minus; bank holidays on working days. Provisional (pencilled-in) is shown separately and not deducted until confirmed.</p>
+      <p class="muted" style="font-size:12px;margin-top:8px">Entitlement = contracted hours &times; <span id="multLabel">5.6</span> weeks (inclusive of bank holidays), plus carry-over. Taken = holiday already used to date; Booked = holiday scheduled ahead. Accrued = allowance earned so far this year at an even daily rate (carry-over counts from day one); &#9650; marks anyone whose taken holiday is ahead of accrual, an overpayment risk if they leave. Remaining = entitlement &minus; taken &minus; booked &minus; bank holidays on working days. Provisional (pencilled-in) is shown separately and not deducted until confirmed.</p>
     </section>
 
     <!-- LOG -->
@@ -505,6 +506,14 @@ function isClosed(ds){ return !!(state.settings.closedOnBH&&BANK_HOLIDAYS[ds]); 
 function entitlement(st){ const base=(st.ent!=null&&st.ent!=='')?Number(st.ent):st.weekly*(state.settings.mult||5.6); return round2(base+(Number(st.carry)||0)); }
 function absForStaffYear(id,yr){ const{start,end}=yearBounds(yr); return state.absences.filter(a=>a.staffId===id&&parse(a.start)<=end&&parse(a.end)>=start); }
 function holidayTaken(id,yr,status){ return round2(absForStaffYear(id,yr).filter(a=>a.type==='holiday'&&(status?a.status===status:a.status==='approved')).reduce((t,a)=>t+Number(a.hours||0),0)); }
+function accruedAt(st,ds,yr){ yr=yr||currentYear; const{start,end}=yearBounds(yr); const s0=iso(start),e0=iso(end);
+  const ent=entitlement(st), carry=Number(st.carry)||0, base=ent-carry;
+  if(ds>=e0) return ent; if(ds<s0) return round2(carry);
+  const total=daysBetween(s0,e0)+1, done=daysBetween(s0,ds)+1;
+  return round2(carry+base*done/total); }
+function bookedThrough(stId,ds,yr,exclDates,exclId){ let t=0; absForStaffYear(stId,yr||currentYear).forEach(a=>{
+  if(a.type!=='holiday'||a.status!=='approved')return; if(a.start>ds)return; if(exclId&&a.id===exclId)return;
+  if(exclDates&&a.start===a.end&&exclDates.has(a.start))return; t+=Number(a.hours||0); }); return round2(t); }
 function holidaySplit(id,yr){ const today=iso(new Date()); let tk=0,bk=0;
   absForStaffYear(id,yr).filter(a=>a.type==='holiday'&&a.status==='approved').forEach(a=>{ const h=Number(a.hours||0); if(a.end<today) tk+=h; else bk+=h; });
   return {taken:round2(tk),booked:round2(bk)}; }
@@ -655,20 +664,31 @@ function renderQd(){ const st=state.staff.find(x=>x.id===qd.id);
       <div id="qdDays">${st?qdDaysHtml(st):'<div class="muted" style="padding:14px 4px;font-size:13px">Choose a team member above to set the hours.</div>'}</div>
       <div class="muted" style="font-size:12px;margin-top:6px">Enter hours per day (quarter-hour steps ok, e.g. 5.25, 7.5; 0 = day off). Bank hol still comes off the holiday allowance. Set a day to 0 to clear it.</div>
     </div>
-    <div class="mf"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="qdSave()">Save</button></div></div></div>`; }
+    <div class="mf"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="qdSave()">Save</button></div></div></div>`; qdAccrualRender(); }
 function qdDaysHtml(st){ let d=parse(qd.from),e=parse(qd.to); if(e<d){const t=d;d=e;e=t;}
   let n=0,total=0,rows=''; 
   while(d<=e&&n<62){ const ds=iso(d); const ex=state.absences.find(a=>a.staffId===qd.id&&a.start===ds&&a.end===ds); const v=(ds in qd.hrs)?qd.hrs[ds]:(ex?ex.hours:qdDefault(st,ds)); total+=Number(v)||0;
     const dow=parse(ds).getDay(); const off=!new Set(workset(st)).has(dow); const bh=BANK_HOLIDAYS[ds];
     rows+=`<div class="qd-row ${off?'off':''}"><span class="qd-d">${DOW[dow]} ${fmt(ds)}${bh?` <span style="color:#7c3aed;font-weight:600">&middot; ${esc(bh)}</span>`:''}</span><input type="number" step="0.25" min="0" id="qh_${ds}" value="${v}" inputmode="decimal" onchange="qd.hrs['${ds}']=this.value" oninput="qdSum()"></div>`;
     d.setDate(d.getDate()+1); n++; }
-  return `<div class="qd-list">${rows}</div><div class="qd-total">Total <b id="qdTotalV">${round2(total)}</b>h over ${n} day${n===1?'':'s'}</div>`; }
+  return `<div class="qd-list">${rows}</div><div class="qd-total">Total <b id="qdTotalV">${round2(total)}</b>h over ${n} day${n===1?'':'s'}</div><div id="qdAccrual" class="qd-accrual"></div>`; }
+function qdAccrualInfo(){ const st=state.staff.find(x=>x.id===qd.id); if(!st||qd.type==='sickness') return null;
+  const rows=Array.prototype.slice.call(document.querySelectorAll('[id^="qh_"]')); if(!rows.length) return null;
+  const edited=new Set(rows.map(i=>i.id.slice(3))); let add=0, endDs=null;
+  rows.forEach(i=>{ const h=Number(i.value)||0; if(h>0){ add+=h; const ds=i.id.slice(3); if(!endDs||ds>endDs) endDs=ds; } });
+  if(!endDs) return null;
+  const proj=round2(bookedThrough(st.id,endDs,currentYear,edited)+add);
+  const acc=accruedAt(st,endDs,currentYear);
+  return {st,endDs,proj,acc,over:round2(proj-acc)}; }
+function qdAccrualRender(){ const el=document.getElementById('qdAccrual'); if(!el)return; const info=qdAccrualInfo();
+  if(info&&info.over>0.01){ el.innerHTML=`&#9888; By ${fmtFull(info.endDs)} ${esc(firstName(info.st.name))} will have <b>${info.proj}h</b> booked but only ~<b>${info.acc}h</b> accrued (<b>${info.over}h ahead</b>). Overpayment risk if they leave.`; el.style.display='block'; }
+  else el.style.display='none'; }
 function qdReadInputs(){ document.querySelectorAll('[id^="qh_"]').forEach(i=>{ qd.hrs[i.id.slice(3)]=i.value; }); }
 function qdRange(){ qdReadInputs(); qd.from=val('qdFrom')||qd.from; qd.to=val('qdTo')||qd.to; const st=state.staff.find(x=>x.id===qd.id); if(st) document.getElementById('qdDays').innerHTML=qdDaysHtml(st); }
-function qdSum(){ let t=0; document.querySelectorAll('[id^="qh_"]').forEach(i=>t+=Number(i.value)||0); const el=document.getElementById('qdTotalV'); if(el)el.textContent=round2(t); }
+function qdSum(){ let t=0; document.querySelectorAll('[id^="qh_"]').forEach(i=>t+=Number(i.value)||0); const el=document.getElementById('qdTotalV'); if(el)el.textContent=round2(t); qdAccrualRender(); }
 function qdFill(zero){ const st=state.staff.find(x=>x.id===qd.id); if(!st){ toast('Choose a team member first'); return; } document.querySelectorAll('[id^="qh_"]').forEach(i=>{ const ds=i.id.slice(3); const v=zero?0:qdDefault(st,ds); i.value=v; qd.hrs[ds]=v; }); qdSum(); }
-function qdType(t){ qd.type=t; document.querySelectorAll('.qd-t').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); }
-function qdSave(){ if(!qd)return; if(!state.staff.find(x=>x.id===qd.id)){ toast('Choose a team member first'); return; } qdReadInputs(); const isBank=qd.type==='bankhol'; const type=qd.type==='sickness'?'sickness':'holiday';
+function qdType(t){ qd.type=t; document.querySelectorAll('.qd-t').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); qdAccrualRender(); }
+function qdSave(){ if(!qd)return; if(!state.staff.find(x=>x.id===qd.id)){ toast('Choose a team member first'); return; } const acc=qdAccrualInfo(); if(acc&&acc.over>0.01&&!confirm(acc.st.name+' will be '+acc.over+'h ahead of accrual by '+fmtFull(acc.endDs)+' ('+acc.proj+'h booked vs ~'+acc.acc+'h accrued by then). Overpayment risk if they leave. Book anyway?')) return; qdReadInputs(); const isBank=qd.type==='bankhol'; const type=qd.type==='sickness'?'sickness':'holiday';
   let d=parse(qd.from),e=parse(qd.to); if(e<d){const t=d;d=e;e=t;} let added=0,tot=0,n=0;
   while(d<=e&&n<62){ const ds=iso(d); let h=round2(Number(qd.hrs[ds])||0);
     const ex=state.absences.find(a=>a.staffId===qd.id&&a.start===ds&&a.end===ds);
@@ -802,12 +822,14 @@ function monthPrintTable(y,mo,staff){
 
 /* ===== BALANCES ===== */
 function renderBalances(){
-  const rows=[...state.staff].sort((a,b)=>a.dept.localeCompare(b.dept)||a.name.localeCompare(b.name)); let tE=0,tTk=0,tBk=0,tP=0,tB=0;
-  let html='<thead><tr><th>Name</th><th>Dept</th><th class="num">h/wk</th><th class="num">Entitlement</th><th class="num">Carry</th><th class="num">Taken</th><th class="num">Booked</th><th class="num">Bank hols</th><th class="num">Provisional</th><th class="num">Remaining</th></tr></thead><tbody>';
-  rows.forEach(st=>{ const ent=entitlement(st),sp=holidaySplit(st.id,currentYear),pd=holidayTaken(st.id,currentYear,'requested'),bh=bankHolidayHours(st,currentYear),rem=round2(ent-sp.taken-sp.booked-bh); tE+=ent;tTk+=sp.taken;tBk+=sp.booked;tP+=pd;tB+=bh;
+  const rows=[...state.staff].sort((a,b)=>a.dept.localeCompare(b.dept)||a.name.localeCompare(b.name)); let tE=0,tTk=0,tBk=0,tP=0,tB=0,tAc=0;
+  const todayIso=iso(new Date());
+  let html='<thead><tr><th>Name</th><th>Dept</th><th class="num">h/wk</th><th class="num">Entitlement</th><th class="num">Carry</th><th class="num">Accrued</th><th class="num">Taken</th><th class="num">Booked</th><th class="num">Bank hols</th><th class="num">Provisional</th><th class="num">Remaining</th></tr></thead><tbody>';
+  rows.forEach(st=>{ const ent=entitlement(st),sp=holidaySplit(st.id,currentYear),pd=holidayTaken(st.id,currentYear,'requested'),bh=bankHolidayHours(st,currentYear),rem=round2(ent-sp.taken-sp.booked-bh); const acc=accruedAt(st,todayIso,currentYear); const ahead=round2(sp.taken-acc); tE+=ent;tTk+=sp.taken;tBk+=sp.booked;tP+=pd;tB+=bh;tAc+=acc;
     const pct=ent>0?rem/ent:0; const cls=rem<0?'bal-bad':pct<0.2?'bal-warn':'bal-ok';
-    html+=`<tr><td><strong>${esc(st.name)}</strong></td><td>${st.dept}</td><td class="num">${st.weekly}</td><td class="num">${ent}</td><td class="num">${Number(st.carry)||0}</td><td class="num">${sp.taken||'&ndash;'}</td><td class="num">${sp.booked||'&ndash;'}</td><td class="num">${bh||'&ndash;'}</td><td class="num">${pd||'&ndash;'}</td><td class="num ${cls}">${rem}h</td></tr>`; });
-  html+=`</tbody><tfoot><tr style="font-weight:700;background:#f7f8fc"><td colspan="3">Totals</td><td class="num">${round2(tE)}</td><td></td><td class="num">${round2(tTk)}</td><td class="num">${round2(tBk)}</td><td class="num">${round2(tB)||'&ndash;'}</td><td class="num">${round2(tP)||'&ndash;'}</td><td class="num">${round2(tE-tTk-tBk-tB)}h</td></tr></tfoot>`;
+    const tkCls=ahead>0.01?'bal-warn':''; const tkTitle=ahead>0.01?`${ahead}h ahead of accrual today`:'';
+    html+=`<tr><td><strong>${esc(st.name)}</strong></td><td>${st.dept}</td><td class="num">${st.weekly}</td><td class="num">${ent}</td><td class="num">${Number(st.carry)||0}</td><td class="num">${acc}</td><td class="num ${tkCls}" title="${tkTitle}">${sp.taken||'&ndash;'}${ahead>0.01?' &#9650;':''}</td><td class="num">${sp.booked||'&ndash;'}</td><td class="num">${bh||'&ndash;'}</td><td class="num">${pd||'&ndash;'}</td><td class="num ${cls}">${rem}h</td></tr>`; });
+  html+=`</tbody><tfoot><tr style="font-weight:700;background:#f7f8fc"><td colspan="3">Totals</td><td class="num">${round2(tE)}</td><td></td><td class="num">${round2(tAc)}</td><td class="num">${round2(tTk)}</td><td class="num">${round2(tBk)}</td><td class="num">${round2(tB)||'&ndash;'}</td><td class="num">${round2(tP)||'&ndash;'}</td><td class="num">${round2(tE-tTk-tBk-tB)}h</td></tr></tfoot>`;
   document.getElementById('balTable').innerHTML=html;
   document.getElementById('balKpi').innerHTML=`<div class="card"><div class="v">${round2(tE)}h</div><div class="k">Total entitlement</div></div><div class="card"><div class="v">${round2(tTk)}h</div><div class="k">Taken to date</div></div><div class="card"><div class="v">${round2(tBk)}h</div><div class="k">Booked ahead</div></div><div class="card"><div class="v">${round2(tE-tTk-tBk-tB)}h</div><div class="k">Remaining</div></div>`;
   document.getElementById('multLabel').textContent=state.settings.mult;
@@ -861,6 +883,7 @@ function eSuggest(){ const st=state.staff.find(x=>x.id===val('eStaff')); const a
 function closeModal(){ document.getElementById('modalMount').innerHTML=''; }
 function saveEdit(){ const id=val('eId'),a=val('eStart'),b=val('eEnd'); if(!a||!b||b<a){ toast('Check the dates'); return; }
   const rec={staffId:val('eStaff'),type:val('eType'),start:a,end:b,hours:Number(val('eHours'))||0,status:val('eStatus'),note:val('eNote')};
+  if(rec.type==='holiday'&&rec.status==='approved'){ const st=state.staff.find(x=>x.id===rec.staffId); if(st){ const proj=round2(bookedThrough(st.id,rec.end,currentYear,null,id||null)+rec.hours); const ac=accruedAt(st,rec.end,currentYear); const over=round2(proj-ac); if(over>0.01&&!confirm(st.name+' will be '+over+'h ahead of accrual by '+fmtFull(rec.end)+' ('+proj+'h booked vs ~'+ac+'h accrued by then). Overpayment risk if they leave. Book anyway?')) return; } }
   if(id)Object.assign(getAbs(id),rec); else { rec.id=s(); rec.created=iso(new Date()); state.absences.push(rec); }
   save(); closeModal(); renderAll(); toast('Saved'); }
 function delFromModal(){ const id=val('eId'); if(id&&confirm('Delete this absence?')){ state.absences=state.absences.filter(a=>a.id!==id); save(); closeModal(); renderAll(); } }
