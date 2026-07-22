@@ -96,6 +96,7 @@
   .planner td.cell.hol{background:var(--hol)}
   .planner td.cell.holp{background:repeating-linear-gradient(45deg,var(--hol-pend),var(--hol-pend) 4px,#fff 4px,#fff 8px)}
   .planner td.cell.holbh{background:#c084fc}
+  .planner td.cell.unp{background:#fb923c}
   .planner td.cell.sick{background:var(--sick)}
   .planner td.cell.other{background:var(--other)}
   .planner[data-mode="month"] td.cell,.planner[data-mode="month"] .dhead{width:34px;min-width:34px}
@@ -110,6 +111,7 @@
   .sw{width:14px;height:14px;border-radius:3px;display:inline-block;border:1px solid rgba(0,0,0,.08)}
   .sw.hol{background:var(--hol)}.sw.holp{background:repeating-linear-gradient(45deg,var(--hol-pend),var(--hol-pend) 3px,#fff 3px,#fff 6px)}
   .sw.holbh{background:#c084fc}
+  .sw.unp{background:#fb923c}
   .sw.sick{background:var(--sick)}.sw.other{background:var(--other)}.sw.we{background:var(--wk)}
   .sw.bh{background:#fff;box-shadow:inset 3px 0 0 var(--bh);border:1px solid var(--line)}
 
@@ -176,6 +178,9 @@
   table.mp td.hol{background:#bfdbfe}
   table.mp td.holp{background:repeating-linear-gradient(45deg,#bfdbfe,#bfdbfe 3px,#fff 3px,#fff 6px)}
   table.mp td.holbh{background:#e9d5ff}
+  table.mp td.unp{background:#fed7aa}
+  .mp-key{margin-top:5px;font-size:9px;color:#334155;display:flex;gap:12px;flex-wrap:wrap}
+  .mp-key i{display:inline-block;width:11px;height:11px;border:1px solid #94a3b8;border-radius:2px;vertical-align:-2px;margin-right:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   table.mp td.sick{background:#fca5a5}
   table.mp td.other{background:#dfe3ea}
   table.mp td.closed{background:#e2e8f0;color:#94a3b8;background-image:repeating-linear-gradient(45deg,#d8dee8,#d8dee8 2px,transparent 2px,transparent 5px)}
@@ -185,7 +190,7 @@
 .qd-t{flex:1;padding:9px;border:1.5px solid #d7dbe6;background:#fff;border-radius:9px;font-weight:600;font-size:13px;cursor:pointer;color:#475569}
 .qd-t.on{border-color:#1e5eff;background:#eef3ff;color:#1e5eff}
 .qd-t.bank.on{border-color:#a855f7;background:#f5edff;color:#8b2fd6}
-.qd-t.unp.on{border-color:#64748b;background:#f1f5f9;color:#334155}
+.qd-t.unp.on{border-color:#f97316;background:#fff7ed;color:#c2410c}
 .ctxmenu{position:fixed;z-index:120;background:#fff;border:1px solid #d7dbe6;border-radius:10px;box-shadow:0 10px 28px rgba(15,23,42,.2);min-width:185px;overflow:hidden;font-size:13px}
 .ctxmenu .ctxhead{padding:8px 12px 6px;font-size:11.5px;font-weight:700;color:#64748b;border-bottom:1px solid #eef1f6}
 .ctxmenu button{display:block;width:100%;text-align:left;padding:9px 12px;border:none;background:#fff;cursor:pointer;font-size:13px;color:#1f2937}
@@ -243,7 +248,7 @@
     @page{size:A4 landscape;margin:9mm}
     .planner td.cell,.planner .grp,.tag,.planner td.cell.we,.planner .dhead.we,.planner tr.cover td.short{-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .bk-open,.bk-tight,.bk-full,.bk-none,.bkmonth h4,.bkdow{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    table.mp td.hol,table.mp td.holp,table.mp td.holbh,table.mp td.sick,table.mp td.other,table.mp td.we,table.mp th,tr.mp-grp td{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    table.mp td.hol,table.mp td.holp,table.mp td.holbh,table.mp td.unp,table.mp td.sick,table.mp td.other,table.mp td.we,table.mp th,tr.mp-grp td{-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .bkgrid{grid-template-columns:repeat(4,1fr)}
   }
 </style>
@@ -310,7 +315,7 @@
       <div class="print-title print-only"><strong>Store 1478 Absence Planner</strong> &middot; <span class="pyear"></span></div>
       <div class="legend no-print" style="margin-bottom:10px">
         <span><i class="sw hol"></i>Holiday</span><span><i class="sw holbh"></i>Bank hol</span><span><i class="sw holp"></i>Provisional</span>
-        <span><i class="sw sick"></i>Sickness</span><span><i class="sw other"></i>Other/unpaid</span>
+        <span><i class="sw sick"></i>Sickness</span><span><i class="sw unp"></i>Unpaid</span><span><i class="sw other"></i>Other</span>
         <span><i class="sw bh"></i>Bank holiday</span><span><i class="sw we"></i>Weekend</span>
       </div>
       <div class="planner-wrap" id="plannerWrap"></div>
@@ -643,7 +648,7 @@ function renderPlanner(){
     html+=`<tr><td class="nm">${esc(st.name)}<small>${st.weekly}h &middot; ${daysPerWeek(st)}d${st.note?' &middot; '+esc(st.note):''}</small></td>`;
     days.forEach(dt=>{ const ds=iso(dt); const we=dt.getDay()===0||dt.getDay()===6; const bh=BANK_HOLIDAYS[ds]; const cell=lut[st.id]&&lut[st.id][ds];
       let cls='cell'; if(we)cls+=' we'; if((!set.has(dt.getDay())||isClosed(ds))&&!cell)cls+=' off'; if(bh)cls+=' bh'; if(ds===todayIso)cls+=' today';
-      if(cell){ if(cell.type==='sickness')cls+=' sick'; else if(cell.type==='holiday')cls+=cell.bh?' holbh':(cell.status==='approved'?' hol':' holp'); else cls+=' other'; }
+      if(cell){ if(cell.type==='sickness')cls+=' sick'; else if(cell.type==='holiday')cls+=cell.bh?' holbh':(cell.status==='approved'?' hol':' holp'); else cls+=(cell.type==='unpaid'?' unp':' other'); }
       const base=cell?`${st.name} \u2013 ${TYPES[cell.type]} (${statusLabel(cell.status)})`:`${st.name} \u2013 ${fmtFull(ds)}`;
       html+=`<td class="${cls}" title="${bh?base+' \u00b7 '+esc(bh):base}" onclick="cellClick('${st.id}','${ds}',${cell?`'${cell.id}'`:'null'})" oncontextmenu="return cellMenu(event,'${st.id}','${ds}',${cell?`'${cell.id}'`:'null'})"></td>`; });
     html+='</tr>'; });
@@ -851,6 +856,7 @@ function renderMonthPrint(){
 function monthPrintTable(y,mo,staff){
   const dim=new Date(y,mo+1,0).getDate(); const DOWL=['S','M','T','W','T','F','S'];
   const label=new Date(y,mo,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  const KEY='<div class="mp-key"><span><i style="background:#bfdbfe"></i>Holiday</span><span><i style="background:#e9d5ff"></i>Bank hol booking</span><span><i style="background:#fca5a5"></i>Sickness</span><span><i style="background:#fed7aa"></i>Unpaid</span><span><i style="background:#e8ebf1"></i>Other</span><span><i style="background:#ede9fe;box-shadow:inset 0 0 0 1px #a78bfa"></i>Bank holiday (closed marker)</span></div>';
   let head='<th class="nm">Store 1478 &middot; '+label+'</th>';
   for(let d=1;d<=dim;d++){ const dt=new Date(y,mo,d); const dow=dt.getDay(); const we=dow===0||dow===6; const bh=BANK_HOLIDAYS[iso(dt)];
     head+=`<th class="${we?'we':''} ${bh?'bh':''}">${d}<br>${DOWL[dow]}</th>`; }
@@ -865,12 +871,12 @@ function monthPrintTable(y,mo,staff){
       else if(a){ if(a.type==='sickness'){ cls+=' sick'; content='<span class="vhrs">S</span>'; }
         else if(a.type==='holiday'){ cls+= a.bh?' holbh':(a.status==='approved'?' hol':' holp');
           if(workset(st).indexOf(dow)>-1){ const wd=workDaysInRange(st,a.start,a.end); const h=wd<=1?a.hours:round2(a.hours/wd); if(h>0)content=`<span class="vhrs">${h}</span>`; } }
-        else { cls+=' other'; if(a.hours>0)content=`<span class="vhrs">${a.hours}</span>`; } }
+        else { cls+=(a.type==='unpaid'?' unp':' other'); if(a.hours>0)content=`<span class="vhrs">${a.hours}</span>`; } }
       r+=`<td class="${cls}">${content}</td>`;
     }
     rows+='<tr>'+r+'</tr>';
   });
-  return `<div class="mp-month"><table class="mp"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  return `<div class="mp-month"><table class="mp"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>${KEY}</div>`;
 }
 
 /* ===== BALANCES ===== */
