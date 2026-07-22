@@ -97,6 +97,7 @@
   .planner td.cell.holp{background:repeating-linear-gradient(45deg,var(--hol-pend),var(--hol-pend) 4px,#fff 4px,#fff 8px)}
   .planner td.cell.holbh{background:#c084fc}
   .planner td.cell.unp{background:#fb923c}
+  .planner td.cell.offd{background:repeating-linear-gradient(45deg,#94a3b8,#94a3b8 3px,#e2e8f0 3px,#e2e8f0 6px)}
   .planner td.cell.sick{background:var(--sick)}
   .planner td.cell.other{background:var(--other)}
   .planner[data-mode="month"] td.cell,.planner[data-mode="month"] .dhead{width:34px;min-width:34px}
@@ -112,6 +113,7 @@
   .sw.hol{background:var(--hol)}.sw.holp{background:repeating-linear-gradient(45deg,var(--hol-pend),var(--hol-pend) 3px,#fff 3px,#fff 6px)}
   .sw.holbh{background:#c084fc}
   .sw.unp{background:#fb923c}
+  .sw.offd{background:repeating-linear-gradient(45deg,#94a3b8,#94a3b8 3px,#e2e8f0 3px,#e2e8f0 6px)}
   .sw.sick{background:var(--sick)}.sw.other{background:var(--other)}.sw.we{background:var(--wk)}
   .sw.bh{background:#fff;box-shadow:inset 3px 0 0 var(--bh);border:1px solid var(--line)}
 
@@ -179,6 +181,7 @@
   table.mp td.holp{background:repeating-linear-gradient(45deg,#bfdbfe,#bfdbfe 3px,#fff 3px,#fff 6px)}
   table.mp td.holbh{background:#e9d5ff}
   table.mp td.unp{background:#fed7aa}
+  table.mp td.offd{background:repeating-linear-gradient(45deg,#cbd5e1,#cbd5e1 2.5px,#f1f5f9 2.5px,#f1f5f9 5px)}
   .mp-key{margin-top:5px;font-size:9px;color:#334155;display:flex;gap:12px;flex-wrap:wrap}
   .mp-key i{display:inline-block;width:11px;height:11px;border:1px solid #94a3b8;border-radius:2px;vertical-align:-2px;margin-right:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   table.mp td.sick{background:#fca5a5}
@@ -191,6 +194,7 @@
 .qd-t.on{border-color:#1e5eff;background:#eef3ff;color:#1e5eff}
 .qd-t.bank.on{border-color:#a855f7;background:#f5edff;color:#8b2fd6}
 .qd-t.unp.on{border-color:#f97316;background:#fff7ed;color:#c2410c}
+.qd-t.offd.on{border-color:#475569;background:#f1f5f9;color:#1f2937}
 .ctxmenu{position:fixed;z-index:120;background:#fff;border:1px solid #d7dbe6;border-radius:10px;box-shadow:0 10px 28px rgba(15,23,42,.2);min-width:185px;overflow:hidden;font-size:13px}
 .ctxmenu .ctxhead{padding:8px 12px 6px;font-size:11.5px;font-weight:700;color:#64748b;border-bottom:1px solid #eef1f6}
 .ctxmenu button{display:block;width:100%;text-align:left;padding:9px 12px;border:none;background:#fff;cursor:pointer;font-size:13px;color:#1f2937}
@@ -248,7 +252,7 @@
     @page{size:A4 landscape;margin:9mm}
     .planner td.cell,.planner .grp,.tag,.planner td.cell.we,.planner .dhead.we,.planner tr.cover td.short{-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .bk-open,.bk-tight,.bk-full,.bk-none,.bkmonth h4,.bkdow{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    table.mp td.hol,table.mp td.holp,table.mp td.holbh,table.mp td.unp,table.mp td.sick,table.mp td.other,table.mp td.we,table.mp th,tr.mp-grp td{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    table.mp td.hol,table.mp td.holp,table.mp td.holbh,table.mp td.unp,table.mp td.offd,table.mp td.sick,table.mp td.other,table.mp td.we,table.mp th,tr.mp-grp td{-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .bkgrid{grid-template-columns:repeat(4,1fr)}
   }
 </style>
@@ -315,7 +319,7 @@
       <div class="print-title print-only"><strong>Store 1478 Absence Planner</strong> &middot; <span class="pyear"></span></div>
       <div class="legend no-print" style="margin-bottom:10px">
         <span><i class="sw hol"></i>Holiday</span><span><i class="sw holbh"></i>Bank hol</span><span><i class="sw holp"></i>Provisional</span>
-        <span><i class="sw sick"></i>Sickness</span><span><i class="sw unp"></i>Unpaid</span><span><i class="sw other"></i>Other</span>
+        <span><i class="sw sick"></i>Sickness</span><span><i class="sw unp"></i>Unpaid</span><span><i class="sw offd"></i>Off day (0h)</span><span><i class="sw other"></i>Other</span>
         <span><i class="sw bh"></i>Bank holiday</span><span><i class="sw we"></i>Weekend</span>
       </div>
       <div class="planner-wrap" id="plannerWrap"></div>
@@ -471,7 +475,7 @@
 <script>
 /* ===== STATE ===== */
 const LS_KEY='boots1478Absence', SYNC_KEY='boots1478Sync';
-const TYPES={holiday:'Holiday',sickness:'Sickness',unpaid:'Unpaid leave',other:'Other'};
+const TYPES={holiday:'Holiday',sickness:'Sickness',unpaid:'Unpaid leave',offday:'Off day (0h, blocks calendar)',other:'Other'};
 const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const BANK_HOLIDAYS={
   "2025-01-01":"New Year's Day","2025-04-18":"Good Friday","2025-04-21":"Easter Monday","2025-05-05":"Early May bank holiday","2025-05-26":"Spring bank holiday","2025-08-25":"Summer bank holiday","2025-12-25":"Christmas Day","2025-12-26":"Boxing Day",
@@ -638,7 +642,7 @@ function renderPlanner(){
 
   const lut={};
   state.absences.forEach(a=>{ if(!lut[a.staffId])lut[a.staffId]={};
-    eachDay(a.start,a.end,ds=>{ const rank=t=>({sickness:4,holiday_approved:3,holiday_requested:2,unpaid:1,other:1})[t]||1;
+    eachDay(a.start,a.end,ds=>{ const rank=t=>({sickness:4,holiday_approved:3,holiday_requested:2,unpaid:1,offday:1,other:1})[t]||1;
       const key=a.type==='holiday'?('holiday_'+a.status):a.type; const prev=lut[a.staffId][ds];
       if(!prev||rank(key)>rank(prev.key)) lut[a.staffId][ds]={key,type:a.type,status:a.status,id:a.id,bh:a.bh}; }); });
 
@@ -648,7 +652,7 @@ function renderPlanner(){
     html+=`<tr><td class="nm">${esc(st.name)}<small>${st.weekly}h &middot; ${daysPerWeek(st)}d${st.note?' &middot; '+esc(st.note):''}</small></td>`;
     days.forEach(dt=>{ const ds=iso(dt); const we=dt.getDay()===0||dt.getDay()===6; const bh=BANK_HOLIDAYS[ds]; const cell=lut[st.id]&&lut[st.id][ds];
       let cls='cell'; if(we)cls+=' we'; if((!set.has(dt.getDay())||isClosed(ds))&&!cell)cls+=' off'; if(bh)cls+=' bh'; if(ds===todayIso)cls+=' today';
-      if(cell){ if(cell.type==='sickness')cls+=' sick'; else if(cell.type==='holiday')cls+=cell.bh?' holbh':(cell.status==='approved'?' hol':' holp'); else cls+=(cell.type==='unpaid'?' unp':' other'); }
+      if(cell){ if(cell.type==='sickness')cls+=' sick'; else if(cell.type==='holiday')cls+=cell.bh?' holbh':(cell.status==='approved'?' hol':' holp'); else cls+=(cell.type==='unpaid'?' unp':cell.type==='offday'?' offd':' other'); }
       const base=cell?`${st.name} \u2013 ${TYPES[cell.type]} (${statusLabel(cell.status)})`:`${st.name} \u2013 ${fmtFull(ds)}`;
       html+=`<td class="${cls}" title="${bh?base+' \u00b7 '+esc(bh):base}" onclick="cellClick('${st.id}','${ds}',${cell?`'${cell.id}'`:'null'})" oncontextmenu="return cellMenu(event,'${st.id}','${ds}',${cell?`'${cell.id}'`:'null'})"></td>`; });
     html+='</tr>'; });
@@ -670,6 +674,7 @@ function cellClick(id,ds,absId){ const st=state.staff.find(x=>x.id===id); if(!st
   const a=absId?state.absences.find(x=>x.id===absId):null;
   if(a&&a.start!==a.end){ openEdit(a); return; }                 // legacy multi-day ranges use full form
   qd={id,type:a?(a.type==='holiday'&&a.bh?'bankhol':(a.type==='other'?'unpaid':a.type)):'holiday',from:ds,to:ds,hrs:{}};
+  if(a&&a.type==='offday')qd.type='offday';
   if(a) qd.hrs[ds]=a.hours;
   renderQd(); }
 function cellMenu(e,id,ds,absId){ if(e&&e.preventDefault)e.preventDefault(); closeCtx();
@@ -688,7 +693,7 @@ function ctxAway(ev){ const m=document.getElementById('ctxMenu'); if(m&&!(m.cont
 function closeCtx(){ const m=document.getElementById('ctxMenu'); if(m&&m.remove)m.remove(); document.removeEventListener('mousedown',ctxAway); }
 function removeAbs(absId){ const a=state.absences.find(x=>x.id===absId); closeCtx(); if(!a)return;
   const st=state.staff.find(x=>x.id===a.staffId);
-  const lbl=a.type==='sickness'?'sickness':a.type==='holiday'?(a.bh?'bank holiday booking':'holiday'):'unpaid/other leave';
+  const lbl=a.type==='sickness'?'sickness':a.type==='holiday'?(a.bh?'bank holiday booking':'holiday'):a.type==='offday'?'off-day marker':'unpaid/other leave';
   const when=a.start===a.end?fmtFull(a.start):fmtFull(a.start)+' \u2013 '+fmtFull(a.end);
   if(!confirm('Remove '+lbl+' for '+(st?st.name:'?')+', '+when+' ('+(a.hours||0)+'h)?')) return;
   state.absences=state.absences.filter(x=>x.id!==absId); save(); renderAll(); toast('Removed'); }
@@ -707,6 +712,7 @@ function renderQd(){ const st=state.staff.find(x=>x.id===qd.id);
         <button type="button" class="qd-t bank ${qd.type==='bankhol'?'on':''}" data-t="bankhol" onclick="qdType('bankhol')">Bank hol</button>
         <button type="button" class="qd-t ${qd.type==='sickness'?'on':''}" data-t="sickness" onclick="qdType('sickness')">Sickness</button>
         <button type="button" class="qd-t unp ${qd.type==='unpaid'?'on':''}" data-t="unpaid" onclick="qdType('unpaid')">Unpaid</button>
+        <button type="button" class="qd-t offd ${qd.type==='offday'?'on':''}" data-t="offday" onclick="qdType('offday')">Off day</button>
       </div>
       <div class="qd-when">
         <label>From<input type="date" id="qdFrom" value="${qd.from}" onchange="qdRange()"></label>
@@ -718,13 +724,17 @@ function renderQd(){ const st=state.staff.find(x=>x.id===qd.id);
     </div>
     <div class="mf"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="qdSave()">Save</button></div></div></div>`; qdAccrualRender(); }
 function qdDaysHtml(st){ let d=parse(qd.from),e=parse(qd.to); if(e<d){const t=d;d=e;e=t;}
+  const single=iso(d)===iso(e);
   let n=0,total=0,rows=''; 
-  while(d<=e&&n<62){ const ds=iso(d); const ex=state.absences.find(a=>a.staffId===qd.id&&a.start===ds&&a.end===ds); const v=(ds in qd.hrs)?qd.hrs[ds]:(ex?ex.hours:qdDefault(st,ds)); total+=Number(v)||0;
+  while(d<=e&&n<62){ const ds=iso(d); const ex=state.absences.find(a=>a.staffId===qd.id&&a.start===ds&&a.end===ds); const v=(ds in qd.hrs)?qd.hrs[ds]:(ex?ex.hours:(single?(qdDefault(st,ds)||round2(dailyHours(st))||0):qdDefault(st,ds))); total+=Number(v)||0;
     const dow=parse(ds).getDay(); const off=!new Set(workset(st)).has(dow); const bh=BANK_HOLIDAYS[ds];
-    rows+=`<div class="qd-row ${off?'off':''}"><span class="qd-d">${DOW[dow]} ${fmt(ds)}${bh?` <span style="color:#7c3aed;font-weight:600">&middot; ${esc(bh)}</span>`:''}</span><input type="number" step="0.25" min="0" id="qh_${ds}" value="${v}" inputmode="decimal" onchange="qd.hrs['${ds}']=this.value" oninput="qdSum()"></div>`;
+    const offMode=qd.type==='offday';
+    const ctl=offMode?`<input type="checkbox" id="qh_${ds}" ${(ds in qd.hrs)?(qd.hrs[ds]==='1'?'checked':''):((ex&&ex.type==='offday')||(single&&!ex)?'checked':'')} onchange="qd.hrs['${ds}']=this.checked?'1':'0';qdSum()">`
+                     :`<input type="number" step="0.25" min="0" id="qh_${ds}" value="${v}" inputmode="decimal" onchange="qd.hrs['${ds}']=this.value" oninput="qdSum()">`;
+    rows+=`<div class="qd-row ${off?'off':''}"><span class="qd-d">${DOW[dow]} ${fmt(ds)}${bh?` <span style="color:#7c3aed;font-weight:600">&middot; ${esc(bh)}</span>`:''}</span>${ctl}</div>`;
     d.setDate(d.getDate()+1); n++; }
   return `<div class="qd-list">${rows}</div><div class="qd-total">Total <b id="qdTotalV">${round2(total)}</b>h over ${n} day${n===1?'':'s'}</div><div id="qdAccrual" class="qd-accrual"></div>`; }
-function qdAccrualInfo(){ const st=state.staff.find(x=>x.id===qd.id); if(!st||qd.type==='sickness'||qd.type==='unpaid') return null;
+function qdAccrualInfo(){ const st=state.staff.find(x=>x.id===qd.id); if(!st||qd.type==='sickness'||qd.type==='unpaid'||qd.type==='offday') return null;
   const rows=Array.prototype.slice.call(document.querySelectorAll('[id^="qh_"]')); if(!rows.length) return null;
   const edited=new Set(rows.map(i=>i.id.slice(3))); let add=0, endDs=null;
   rows.forEach(i=>{ const h=Number(i.value)||0; if(h>0){ add+=h; const ds=i.id.slice(3); if(!endDs||ds>endDs) endDs=ds; } });
@@ -738,19 +748,30 @@ function qdAccrualRender(){ const el=document.getElementById('qdAccrual'); if(!e
   if(info&&info.overEnt>0.01){ el.classList.add('bad'); el.innerHTML=`&#9940; This takes ${esc(firstName(info.st.name))} <b>over their allowance</b>: <b>${info.yearTot}h</b> taken + booked for the year vs <b>${info.ent}h</b> entitlement (<b>${info.overEnt}h over</b>).`; el.style.display='block'; }
   else if(info&&info.over>0.01){ el.classList.remove('bad'); el.innerHTML=`&#9888; By ${fmtFull(info.endDs)} ${esc(firstName(info.st.name))} will have <b>${info.proj}h</b> booked but only ~<b>${info.acc}h</b> accrued (<b>${info.over}h ahead</b>). Overpayment risk if they leave.`; el.style.display='block'; }
   else{ el.classList.remove('bad'); el.style.display='none'; } }
-function qdReadInputs(){ document.querySelectorAll('[id^="qh_"]').forEach(i=>{ qd.hrs[i.id.slice(3)]=i.value; }); }
+function qdReadInputs(){ const offMode=qd.type==='offday'; document.querySelectorAll('[id^="qh_"]').forEach(i=>{ qd.hrs[i.id.slice(3)]=offMode?(i.checked?'1':'0'):i.value; }); }
 function qdRange(){ qdReadInputs(); qd.from=val('qdFrom')||qd.from; qd.to=val('qdTo')||qd.to; const st=state.staff.find(x=>x.id===qd.id); if(st) document.getElementById('qdDays').innerHTML=qdDaysHtml(st); }
 function qdSum(){ let t=0; document.querySelectorAll('[id^="qh_"]').forEach(i=>t+=Number(i.value)||0); const el=document.getElementById('qdTotalV'); if(el)el.textContent=round2(t); qdAccrualRender(); }
 function qdFill(zero){ const st=state.staff.find(x=>x.id===qd.id); if(!st){ toast('Choose a team member first'); return; } document.querySelectorAll('[id^="qh_"]').forEach(i=>{ const ds=i.id.slice(3); const v=zero?0:qdDefault(st,ds); i.value=v; qd.hrs[ds]=v; }); qdSum(); }
-function qdType(t){ qd.type=t; document.querySelectorAll('.qd-t').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); qdAccrualRender(); }
-function qdSave(){ if(!qd)return; if(!state.staff.find(x=>x.id===qd.id)){ toast('Choose a team member first'); return; } const acc=qdAccrualInfo(); if(acc&&acc.overEnt>0.01&&!confirm(acc.st.name+' would go OVER their allowance: '+acc.yearTot+'h taken + booked for the year vs '+acc.ent+'h entitlement ('+acc.overEnt+'h over). Book anyway?')) return; if(acc&&acc.overEnt<=0.01&&acc.over>0.01&&!confirm(acc.st.name+' will be '+acc.over+'h ahead of accrual by '+fmtFull(acc.endDs)+' ('+acc.proj+'h booked vs ~'+acc.acc+'h accrued by then). Overpayment risk if they leave. Book anyway?')) return; qdReadInputs(); const isBank=qd.type==='bankhol'; const type=qd.type==='sickness'?'sickness':qd.type==='unpaid'?'unpaid':'holiday';
-  let d=parse(qd.from),e=parse(qd.to); if(e<d){const t=d;d=e;e=t;} let added=0,tot=0,n=0;
+function qdType(t){ const was=qd.type; qd.type=t; document.querySelectorAll('.qd-t').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); if((t==='offday')!==(was==='offday')){ qd.hrs={}; const st=state.staff.find(x=>x.id===qd.id); const dv=document.getElementById('qdDays'); if(st&&dv)dv.innerHTML=qdDaysHtml(st); } qdAccrualRender(); }
+function qdSave(){ if(!qd)return; if(!state.staff.find(x=>x.id===qd.id)){ toast('Choose a team member first'); return; }
+  if(qd.type==='offday'){ qdReadInputs(); let d=parse(qd.from),e=parse(qd.to); if(e<d){const t=d;d=e;e=t;} let added=0,removed=0,n=0;
+    while(d<=e&&n<62){ const ds=iso(d); const flag=qd.hrs[ds]==='1';
+      const ex=state.absences.find(a=>a.staffId===qd.id&&a.start===ds&&a.end===ds);
+      if(flag){ if(ex){ if(ex.type!=='offday'){ ex.type='offday'; ex.hours=0; ex.status='approved'; delete ex.bh; } }
+                else state.absences.push({id:s(),staffId:qd.id,type:'offday',start:ds,end:ds,hours:0,status:'approved',note:'',created:iso(new Date())}); added++; }
+      else if(ex&&ex.type==='offday'){ state.absences=state.absences.filter(a=>a!==ex); removed++; }
+      d.setDate(d.getDate()+1); n++; }
+    if(added===0&&removed===0){ toast('Nothing saved \u2013 tick the day(s) to block.'); return; }
+    save(); closeModal(); renderAll(); toast('Off days: '+added+' blocked'+(removed?', '+removed+' cleared':'')); return; }
+  const acc=qdAccrualInfo(); if(acc&&acc.overEnt>0.01&&!confirm(acc.st.name+' would go OVER their allowance: '+acc.yearTot+'h taken + booked for the year vs '+acc.ent+'h entitlement ('+acc.overEnt+'h over). Book anyway?')) return; if(acc&&acc.overEnt<=0.01&&acc.over>0.01&&!confirm(acc.st.name+' will be '+acc.over+'h ahead of accrual by '+fmtFull(acc.endDs)+' ('+acc.proj+'h booked vs ~'+acc.acc+'h accrued by then). Overpayment risk if they leave. Book anyway?')) return; qdReadInputs(); const isBank=qd.type==='bankhol'; const type=qd.type==='sickness'?'sickness':qd.type==='unpaid'?'unpaid':'holiday';
+  let d=parse(qd.from),e=parse(qd.to); if(e<d){const t=d;d=e;e=t;} let added=0,removed=0,tot=0,n=0;
   while(d<=e&&n<62){ const ds=iso(d); let h=round2(Number(qd.hrs[ds])||0);
     const ex=state.absences.find(a=>a.staffId===qd.id&&a.start===ds&&a.end===ds);
     if(h>0){ if(ex){ ex.hours=h; ex.type=type; ex.bh=isBank; ex.status='approved'; if(!isBank)delete ex.bh; }
              else state.absences.push({id:s(),staffId:qd.id,type,bh:isBank,start:ds,end:ds,hours:h,status:'approved',note:'',created:iso(new Date())}); added++; tot+=h; }
-    else if(ex) state.absences=state.absences.filter(a=>a!==ex);
+    else if(ex){ state.absences=state.absences.filter(a=>a!==ex); removed++; }
     d.setDate(d.getDate()+1); n++; }
+  if(added===0&&removed===0){ toast('Nothing saved \u2013 every day is 0h. Type the hours for the day; days outside the usual working pattern pre-fill as 0.'); return; }
   save(); closeModal(); renderAll(); toast((type==='sickness'?'Sickness':type==='unpaid'?'Unpaid leave':isBank?'Bank holiday':'Holiday')+`: ${added} day${added===1?'':'s'}, ${round2(tot)}h`); }
 
 /* ===== COVERAGE TAB ===== */
@@ -812,7 +833,7 @@ function monthBlock(y,mo,team,mc,showNames,incSick){
     let names=''; if(!closed&&showNames){ names=onHol.map(st=>`<span class="nm">${esc(firstName(st.name))}</span>`).join('')
       +prov.map(st=>`<span class="nm" style="color:#9a7b00;font-style:italic">${esc(firstName(st.name))}?</span>`).join('')
       +onSick.map(st=>`<span class="nm" style="color:#b91c1c">${esc(firstName(st.name))} (off)</span>`).join('')
-      +onOther.map(st=>`<span class="nm" style="color:#64748b">${esc(firstName(st.name))} (unpaid)</span>`).join(''); }
+      +onOther.map(st=>{ const oa=state.absences.find(a=>a.staffId===st.id&&a.type!=='holiday'&&a.type!=='sickness'&&a.status==='approved'&&a.start<=ds&&a.end>=ds); const lab=oa&&oa.type==='offday'?'(off)':'(unpaid)'; return `<span class="nm" style="color:#64748b">${esc(firstName(st.name))} ${lab}</span>`; }).join(''); }
     if(closed) names='<span class="nm" style="color:#94a3b8">closed</span>';
     const sk=(!closed&&onSick.length)?' sk':'';
     cells+=`<div class="bkday ${cls}${sk} ${bh?'bh':''}" title="${why}${scheduled.length?` \u00b7 ${present}/${scheduled.length} in`:''}${bh&&!closed?' \u00b7 '+esc(bh):''}"><span class="dn">${d}</span>${names}</div>`;
@@ -856,7 +877,7 @@ function renderMonthPrint(){
 function monthPrintTable(y,mo,staff){
   const dim=new Date(y,mo+1,0).getDate(); const DOWL=['S','M','T','W','T','F','S'];
   const label=new Date(y,mo,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
-  const KEY='<div class="mp-key"><span><i style="background:#bfdbfe"></i>Holiday</span><span><i style="background:#e9d5ff"></i>Bank hol booking</span><span><i style="background:#fca5a5"></i>Sickness</span><span><i style="background:#fed7aa"></i>Unpaid</span><span><i style="background:#e8ebf1"></i>Other</span><span><i style="background:#ede9fe;box-shadow:inset 0 0 0 1px #a78bfa"></i>Bank holiday (closed marker)</span></div>';
+  const KEY='<div class="mp-key"><span><i style="background:#bfdbfe"></i>Holiday</span><span><i style="background:#e9d5ff"></i>Bank hol booking</span><span><i style="background:#fca5a5"></i>Sickness</span><span><i style="background:#fed7aa"></i>Unpaid</span><span><i style="background:repeating-linear-gradient(45deg,#cbd5e1,#cbd5e1 2.5px,#f1f5f9 2.5px,#f1f5f9 5px)"></i>Off day (not working)</span><span><i style="background:#e8ebf1"></i>Other</span><span><i style="background:#ede9fe;box-shadow:inset 0 0 0 1px #a78bfa"></i>Bank holiday (closed marker)</span></div>';
   let head='<th class="nm">Store 1478 &middot; '+label+'</th>';
   for(let d=1;d<=dim;d++){ const dt=new Date(y,mo,d); const dow=dt.getDay(); const we=dow===0||dow===6; const bh=BANK_HOLIDAYS[iso(dt)];
     head+=`<th class="${we?'we':''} ${bh?'bh':''}">${d}<br>${DOWL[dow]}</th>`; }
@@ -871,7 +892,7 @@ function monthPrintTable(y,mo,staff){
       else if(a){ if(a.type==='sickness'){ cls+=' sick'; content='<span class="vhrs">S</span>'; }
         else if(a.type==='holiday'){ cls+= a.bh?' holbh':(a.status==='approved'?' hol':' holp');
           if(workset(st).indexOf(dow)>-1){ const wd=workDaysInRange(st,a.start,a.end); const h=wd<=1?a.hours:round2(a.hours/wd); if(h>0)content=`<span class="vhrs">${h}</span>`; } }
-        else { cls+=(a.type==='unpaid'?' unp':' other'); if(a.hours>0)content=`<span class="vhrs">${a.hours}</span>`; } }
+        else { cls+=(a.type==='unpaid'?' unp':a.type==='offday'?' offd':' other'); if(a.hours>0)content=`<span class="vhrs">${a.hours}</span>`; } }
       r+=`<td class="${cls}">${content}</td>`;
     }
     rows+='<tr>'+r+'</tr>';
@@ -941,7 +962,7 @@ function eSuggest(){ const st=state.staff.find(x=>x.id===val('eStaff')); const a
     box.innerHTML=`<div class="hint ${availAfter<mc?'bad':off?'some':'ok'}">${st.dept} on ${fmt(a)}: ${off} other${off===1?'':'s'} off. Leaves ${availAfter}/${total} (min ${mc}).</div>`; } else box.innerHTML=''; }
 function closeModal(){ document.getElementById('modalMount').innerHTML=''; }
 function saveEdit(){ const id=val('eId'),a=val('eStart'),b=val('eEnd'); if(!a||!b||b<a){ toast('Check the dates'); return; }
-  const rec={staffId:val('eStaff'),type:val('eType'),start:a,end:b,hours:Number(val('eHours'))||0,status:val('eStatus'),note:val('eNote')};
+  const rec={staffId:val('eStaff'),type:val('eType'),start:a,end:b,hours:Number(val('eHours'))||0,status:val('eStatus'),note:val('eNote')}; if(rec.type==='offday')rec.hours=0;
   if(rec.type==='holiday'&&rec.status==='approved'){ const st=state.staff.find(x=>x.id===rec.staffId); if(st){ const yt=round2(holidayYearTotal(st.id,currentYear,null,id||null)+rec.hours+bankHolidayHours(st,currentYear)); const en=entitlement(st); const oe=round2(yt-en); if(oe>0.01&&!confirm(st.name+' would go OVER their allowance: '+yt+'h taken + booked for the year vs '+en+'h entitlement ('+oe+'h over). Book anyway?')) return; const proj=round2(bookedThrough(st.id,rec.end,currentYear,null,id||null)+rec.hours); const ac=accruedAt(st,rec.end,currentYear); const over=round2(proj-ac); if(oe<=0.01&&over>0.01&&!confirm(st.name+' will be '+over+'h ahead of accrual by '+fmtFull(rec.end)+' ('+proj+'h booked vs ~'+ac+'h accrued by then). Overpayment risk if they leave. Book anyway?')) return; } }
   if(id)Object.assign(getAbs(id),rec); else { rec.id=s(); rec.created=iso(new Date()); state.absences.push(rec); }
   save(); closeModal(); renderAll(); toast('Saved'); }
