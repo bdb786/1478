@@ -185,6 +185,13 @@
 .qd-t{flex:1;padding:9px;border:1.5px solid #d7dbe6;background:#fff;border-radius:9px;font-weight:600;font-size:13px;cursor:pointer;color:#475569}
 .qd-t.on{border-color:#1e5eff;background:#eef3ff;color:#1e5eff}
 .qd-t.bank.on{border-color:#a855f7;background:#f5edff;color:#8b2fd6}
+.qd-t.unp.on{border-color:#64748b;background:#f1f5f9;color:#334155}
+.ctxmenu{position:fixed;z-index:120;background:#fff;border:1px solid #d7dbe6;border-radius:10px;box-shadow:0 10px 28px rgba(15,23,42,.2);min-width:185px;overflow:hidden;font-size:13px}
+.ctxmenu .ctxhead{padding:8px 12px 6px;font-size:11.5px;font-weight:700;color:#64748b;border-bottom:1px solid #eef1f6}
+.ctxmenu button{display:block;width:100%;text-align:left;padding:9px 12px;border:none;background:#fff;cursor:pointer;font-size:13px;color:#1f2937}
+.ctxmenu button:hover{background:#f1f5ff}
+.ctxmenu button.danger{color:#b91c1c}
+.ctxmenu button.danger:hover{background:#fef2f2}
 .qd .f input[type=number]{font-size:20px;font-weight:700;text-align:center;padding:12px}
 .qd-when{display:flex;gap:10px;margin:2px 0 10px}
 .qd-when label{flex:1;font-size:11px;font-weight:700;color:#64748b;display:flex;flex-direction:column;gap:3px;text-transform:uppercase;letter-spacing:.3px}
@@ -638,7 +645,7 @@ function renderPlanner(){
       let cls='cell'; if(we)cls+=' we'; if((!set.has(dt.getDay())||isClosed(ds))&&!cell)cls+=' off'; if(bh)cls+=' bh'; if(ds===todayIso)cls+=' today';
       if(cell){ if(cell.type==='sickness')cls+=' sick'; else if(cell.type==='holiday')cls+=cell.bh?' holbh':(cell.status==='approved'?' hol':' holp'); else cls+=' other'; }
       const base=cell?`${st.name} \u2013 ${TYPES[cell.type]} (${statusLabel(cell.status)})`:`${st.name} \u2013 ${fmtFull(ds)}`;
-      html+=`<td class="${cls}" title="${bh?base+' \u00b7 '+esc(bh):base}" onclick="cellClick('${st.id}','${ds}',${cell?`'${cell.id}'`:'null'})"></td>`; });
+      html+=`<td class="${cls}" title="${bh?base+' \u00b7 '+esc(bh):base}" onclick="cellClick('${st.id}','${ds}',${cell?`'${cell.id}'`:'null'})" oncontextmenu="return cellMenu(event,'${st.id}','${ds}',${cell?`'${cell.id}'`:'null'})"></td>`; });
     html+='</tr>'; });
   if(!staff.length) html+=`<tr><td class="nm">No staff</td><td colspan="${days.length}" class="empty">Add staff to begin</td></tr>`;
 
@@ -657,9 +664,29 @@ function qdDefault(st,ds){ return new Set(workset(st)).has(parse(ds).getDay())?(
 function cellClick(id,ds,absId){ const st=state.staff.find(x=>x.id===id); if(!st)return;
   const a=absId?state.absences.find(x=>x.id===absId):null;
   if(a&&a.start!==a.end){ openEdit(a); return; }                 // legacy multi-day ranges use full form
-  qd={id,type:a?(a.type==='holiday'&&a.bh?'bankhol':a.type):'holiday',from:ds,to:ds,hrs:{}};
+  qd={id,type:a?(a.type==='holiday'&&a.bh?'bankhol':(a.type==='other'?'unpaid':a.type)):'holiday',from:ds,to:ds,hrs:{}};
   if(a) qd.hrs[ds]=a.hours;
   renderQd(); }
+function cellMenu(e,id,ds,absId){ if(e&&e.preventDefault)e.preventDefault(); closeCtx();
+  const st=state.staff.find(x=>x.id===id); if(!st) return false;
+  const a=absId?state.absences.find(x=>x.id===absId):null;
+  const m=document.createElement('div'); m.className='ctxmenu'; m.id='ctxMenu';
+  const head=`<div class="ctxhead">${esc(st.name)} \u00b7 ${fmt(ds)}</div>`;
+  m.innerHTML= a? head+`<button onclick="closeCtx();cellClick('${id}','${ds}','${a.id}')">Edit</button><button class="danger" onclick="removeAbs('${a.id}')">Remove${a.start!==a.end?' whole block':''}</button>`
+              : head+`<button onclick="closeCtx();cellClick('${id}','${ds}',null)">Add absence</button>`;
+  if(document.body){ document.body.appendChild(m);
+    const W=200,H=120,vw=window.innerWidth||1200,vh=window.innerHeight||800;
+    m.style.left=Math.max(4,Math.min(e.clientX||0,vw-W-8))+'px'; m.style.top=Math.max(4,Math.min(e.clientY||0,vh-H-8))+'px';
+    setTimeout(()=>document.addEventListener('mousedown',ctxAway),0); }
+  return false; }
+function ctxAway(ev){ const m=document.getElementById('ctxMenu'); if(m&&!(m.contains&&m.contains(ev.target))) closeCtx(); }
+function closeCtx(){ const m=document.getElementById('ctxMenu'); if(m&&m.remove)m.remove(); document.removeEventListener('mousedown',ctxAway); }
+function removeAbs(absId){ const a=state.absences.find(x=>x.id===absId); closeCtx(); if(!a)return;
+  const st=state.staff.find(x=>x.id===a.staffId);
+  const lbl=a.type==='sickness'?'sickness':a.type==='holiday'?(a.bh?'bank holiday booking':'holiday'):'unpaid/other leave';
+  const when=a.start===a.end?fmtFull(a.start):fmtFull(a.start)+' \u2013 '+fmtFull(a.end);
+  if(!confirm('Remove '+lbl+' for '+(st?st.name:'?')+', '+when+' ('+(a.hours||0)+'h)?')) return;
+  state.absences=state.absences.filter(x=>x.id!==absId); save(); renderAll(); toast('Removed'); }
 function qdNew(){ qd={id:'',type:'holiday',from:iso(new Date()),to:iso(new Date()),hrs:{},pick:true}; renderQd(); }
 function qdPick(v){ qd.id=v; qd.hrs={}; qd.from=val('qdFrom')||qd.from; qd.to=val('qdTo')||qd.to; renderQd(); }
 function renderQd(){ const st=state.staff.find(x=>x.id===qd.id);
@@ -674,6 +701,7 @@ function renderQd(){ const st=state.staff.find(x=>x.id===qd.id);
         <button type="button" class="qd-t ${qd.type==='holiday'?'on':''}" data-t="holiday" onclick="qdType('holiday')">Holiday</button>
         <button type="button" class="qd-t bank ${qd.type==='bankhol'?'on':''}" data-t="bankhol" onclick="qdType('bankhol')">Bank hol</button>
         <button type="button" class="qd-t ${qd.type==='sickness'?'on':''}" data-t="sickness" onclick="qdType('sickness')">Sickness</button>
+        <button type="button" class="qd-t unp ${qd.type==='unpaid'?'on':''}" data-t="unpaid" onclick="qdType('unpaid')">Unpaid</button>
       </div>
       <div class="qd-when">
         <label>From<input type="date" id="qdFrom" value="${qd.from}" onchange="qdRange()"></label>
@@ -691,7 +719,7 @@ function qdDaysHtml(st){ let d=parse(qd.from),e=parse(qd.to); if(e<d){const t=d;
     rows+=`<div class="qd-row ${off?'off':''}"><span class="qd-d">${DOW[dow]} ${fmt(ds)}${bh?` <span style="color:#7c3aed;font-weight:600">&middot; ${esc(bh)}</span>`:''}</span><input type="number" step="0.25" min="0" id="qh_${ds}" value="${v}" inputmode="decimal" onchange="qd.hrs['${ds}']=this.value" oninput="qdSum()"></div>`;
     d.setDate(d.getDate()+1); n++; }
   return `<div class="qd-list">${rows}</div><div class="qd-total">Total <b id="qdTotalV">${round2(total)}</b>h over ${n} day${n===1?'':'s'}</div><div id="qdAccrual" class="qd-accrual"></div>`; }
-function qdAccrualInfo(){ const st=state.staff.find(x=>x.id===qd.id); if(!st||qd.type==='sickness') return null;
+function qdAccrualInfo(){ const st=state.staff.find(x=>x.id===qd.id); if(!st||qd.type==='sickness'||qd.type==='unpaid') return null;
   const rows=Array.prototype.slice.call(document.querySelectorAll('[id^="qh_"]')); if(!rows.length) return null;
   const edited=new Set(rows.map(i=>i.id.slice(3))); let add=0, endDs=null;
   rows.forEach(i=>{ const h=Number(i.value)||0; if(h>0){ add+=h; const ds=i.id.slice(3); if(!endDs||ds>endDs) endDs=ds; } });
@@ -710,7 +738,7 @@ function qdRange(){ qdReadInputs(); qd.from=val('qdFrom')||qd.from; qd.to=val('q
 function qdSum(){ let t=0; document.querySelectorAll('[id^="qh_"]').forEach(i=>t+=Number(i.value)||0); const el=document.getElementById('qdTotalV'); if(el)el.textContent=round2(t); qdAccrualRender(); }
 function qdFill(zero){ const st=state.staff.find(x=>x.id===qd.id); if(!st){ toast('Choose a team member first'); return; } document.querySelectorAll('[id^="qh_"]').forEach(i=>{ const ds=i.id.slice(3); const v=zero?0:qdDefault(st,ds); i.value=v; qd.hrs[ds]=v; }); qdSum(); }
 function qdType(t){ qd.type=t; document.querySelectorAll('.qd-t').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); qdAccrualRender(); }
-function qdSave(){ if(!qd)return; if(!state.staff.find(x=>x.id===qd.id)){ toast('Choose a team member first'); return; } const acc=qdAccrualInfo(); if(acc&&acc.overEnt>0.01&&!confirm(acc.st.name+' would go OVER their allowance: '+acc.yearTot+'h taken + booked for the year vs '+acc.ent+'h entitlement ('+acc.overEnt+'h over). Book anyway?')) return; if(acc&&acc.overEnt<=0.01&&acc.over>0.01&&!confirm(acc.st.name+' will be '+acc.over+'h ahead of accrual by '+fmtFull(acc.endDs)+' ('+acc.proj+'h booked vs ~'+acc.acc+'h accrued by then). Overpayment risk if they leave. Book anyway?')) return; qdReadInputs(); const isBank=qd.type==='bankhol'; const type=qd.type==='sickness'?'sickness':'holiday';
+function qdSave(){ if(!qd)return; if(!state.staff.find(x=>x.id===qd.id)){ toast('Choose a team member first'); return; } const acc=qdAccrualInfo(); if(acc&&acc.overEnt>0.01&&!confirm(acc.st.name+' would go OVER their allowance: '+acc.yearTot+'h taken + booked for the year vs '+acc.ent+'h entitlement ('+acc.overEnt+'h over). Book anyway?')) return; if(acc&&acc.overEnt<=0.01&&acc.over>0.01&&!confirm(acc.st.name+' will be '+acc.over+'h ahead of accrual by '+fmtFull(acc.endDs)+' ('+acc.proj+'h booked vs ~'+acc.acc+'h accrued by then). Overpayment risk if they leave. Book anyway?')) return; qdReadInputs(); const isBank=qd.type==='bankhol'; const type=qd.type==='sickness'?'sickness':qd.type==='unpaid'?'unpaid':'holiday';
   let d=parse(qd.from),e=parse(qd.to); if(e<d){const t=d;d=e;e=t;} let added=0,tot=0,n=0;
   while(d<=e&&n<62){ const ds=iso(d); let h=round2(Number(qd.hrs[ds])||0);
     const ex=state.absences.find(a=>a.staffId===qd.id&&a.start===ds&&a.end===ds);
@@ -718,7 +746,7 @@ function qdSave(){ if(!qd)return; if(!state.staff.find(x=>x.id===qd.id)){ toast(
              else state.absences.push({id:s(),staffId:qd.id,type,bh:isBank,start:ds,end:ds,hours:h,status:'approved',note:'',created:iso(new Date())}); added++; tot+=h; }
     else if(ex) state.absences=state.absences.filter(a=>a!==ex);
     d.setDate(d.getDate()+1); n++; }
-  save(); closeModal(); renderAll(); toast((type==='sickness'?'Sickness':isBank?'Bank holiday':'Holiday')+`: ${added} day${added===1?'':'s'}, ${round2(tot)}h`); }
+  save(); closeModal(); renderAll(); toast((type==='sickness'?'Sickness':type==='unpaid'?'Unpaid leave':isBank?'Bank holiday':'Holiday')+`: ${added} day${added===1?'':'s'}, ${round2(tot)}h`); }
 
 /* ===== COVERAGE TAB ===== */
 function renderCoverage(){
@@ -763,9 +791,11 @@ function monthBlock(y,mo,team,mc,showNames,incSick){
     const onHol=team.filter(st=>state.absences.some(a=>a.staffId===st.id&&a.type==='holiday'&&a.status==='approved'&&a.start<=ds&&a.end>=ds));
     const prov=team.filter(st=>state.absences.some(a=>a.staffId===st.id&&a.type==='holiday'&&a.status==='requested'&&a.start<=ds&&a.end>=ds));
     const onSick=incSick?team.filter(st=>state.absences.some(a=>a.staffId===st.id&&a.type==='sickness'&&a.start<=ds&&a.end>=ds)):[];
+    const onOther=team.filter(st=>state.absences.some(a=>a.staffId===st.id&&a.type!=='holiday'&&a.type!=='sickness'&&a.status==='approved'&&a.start<=ds&&a.end>=ds));
     const onHolSched=scheduled.filter(st=>onHol.indexOf(st)>-1).length;
     const onSickSched=scheduled.filter(st=>onSick.indexOf(st)>-1).length;
-    const offCount=onHolSched+onSickSched;
+    const onOtherSched=scheduled.filter(st=>onOther.indexOf(st)>-1).length;
+    const offCount=onHolSched+onSickSched+onOtherSched;
     const present=scheduled.length-offCount;
     const closed=isClosed(ds); const dec=mo===11;
     let cls='bk-none', why='Not scheduled';
@@ -776,7 +806,8 @@ function monthBlock(y,mo,team,mc,showNames,incSick){
     else { const after=present-1; if(after<1){ cls='bk-full'; why='Would leave no cover'; } else if(after===1){ cls='bk-tight'; why='Last slot'; } else { cls='bk-open'; why='Open'; } }
     let names=''; if(!closed&&showNames){ names=onHol.map(st=>`<span class="nm">${esc(firstName(st.name))}</span>`).join('')
       +prov.map(st=>`<span class="nm" style="color:#9a7b00;font-style:italic">${esc(firstName(st.name))}?</span>`).join('')
-      +onSick.map(st=>`<span class="nm" style="color:#b91c1c">${esc(firstName(st.name))} (off)</span>`).join(''); }
+      +onSick.map(st=>`<span class="nm" style="color:#b91c1c">${esc(firstName(st.name))} (off)</span>`).join('')
+      +onOther.map(st=>`<span class="nm" style="color:#64748b">${esc(firstName(st.name))} (unpaid)</span>`).join(''); }
     if(closed) names='<span class="nm" style="color:#94a3b8">closed</span>';
     const sk=(!closed&&onSick.length)?' sk':'';
     cells+=`<div class="bkday ${cls}${sk} ${bh?'bh':''}" title="${why}${scheduled.length?` \u00b7 ${present}/${scheduled.length} in`:''}${bh&&!closed?' \u00b7 '+esc(bh):''}"><span class="dn">${d}</span>${names}</div>`;
