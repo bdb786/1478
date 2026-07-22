@@ -200,6 +200,21 @@
 .qd-row input{width:76px;text-align:center;padding:7px;border:1px solid #d7dbe6;border-radius:7px;font-size:15px;font-weight:700}
 .qd-total{padding:9px 4px 2px;font-size:13px;color:#334155;text-align:right}
 .qd-accrual{display:none;margin-top:8px;padding:9px 11px;background:#fffbeb;border:1px solid #fcd34d;border-radius:9px;font-size:12.5px;color:#92400e;line-height:1.45}
+.qd-accrual.bad{background:#fef2f2;border-color:#fca5a5;color:#991b1b}
+.rep{page-break-after:always;font-size:12px;color:#111}
+.rep:last-child{page-break-after:auto}
+.rep h2{margin:0 0 2px;font-size:17px}
+.rep .sub{color:#475569;font-size:11.5px;margin-bottom:8px}
+.rep .sumline{display:flex;gap:14px;flex-wrap:wrap;margin:6px 0 10px;font-size:12px}
+.rep .sumline b{font-size:13px}
+.rep table{width:100%;border-collapse:collapse;font-size:11px}
+.rep th,.rep td{border:1px solid #cbd5e1;padding:3px 6px;text-align:left}
+.rep th{background:#eef2f7}
+.rep td.num,.rep th.num{text-align:right}
+.rep .neg{color:#b91c1c;font-weight:700}
+.rep .pos{color:#166534;font-weight:700}
+.lv-res{margin-top:10px;padding:11px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;font-size:13px;line-height:1.55}
+.lv-res b{font-size:14px}
 .fab{position:fixed;bottom:26px;right:26px;width:54px;height:54px;border-radius:50%;background:#1e5eff;color:#fff;font-size:30px;line-height:1;border:none;box-shadow:0 6px 18px rgba(30,94,255,.45);cursor:pointer;z-index:60;display:flex;align-items:center;justify-content:center;padding:0 0 3px}
 .fab:hover{background:#1749c9}
 .qd-person{width:100%;padding:9px;border:1px solid #d7dbe6;border-radius:9px;font-size:14px;font-weight:600;margin-bottom:12px;background:#fff}
@@ -333,7 +348,7 @@
     <!-- BALANCES -->
     <section id="v-balances" class="view">
       <div class="section-head no-print"><h2>Holiday balances</h2><span class="pill" id="balYear"></span>
-        <div class="spacer"></div><button class="btn ghost sm" onclick="printView('balances')">Print</button></div>
+        <div class="spacer"></div><button class="btn ghost sm" onclick="openReportDialog()">Report</button><button class="btn ghost sm" onclick="openLeaverDialog()">Leaver calc</button><button class="btn ghost sm" onclick="printView('balances')">Print</button></div>
       <div class="print-title print-only"><strong>Store 1478 Holiday Balances</strong> &middot; <span class="pyear"></span></div>
       <div class="kpi no-print" id="balKpi"></div>
       <div class="card"><div style="overflow:auto"><table id="balTable"></table></div></div>
@@ -436,6 +451,7 @@
 </div>
 
 <section id="v-monthprint" class="view"><div id="monthprintMount"></div></section>
+<section id="v-report" class="view"><div id="reportMount"></div></section>
 
 <div id="modalMount"></div>
 <div id="toastMount"></div>
@@ -513,6 +529,9 @@ function accruedAt(st,ds,yr){ yr=yr||currentYear; const{start,end}=yearBounds(yr
   return round2(carry+base*done/total); }
 function bookedThrough(stId,ds,yr,exclDates,exclId){ let t=0; absForStaffYear(stId,yr||currentYear).forEach(a=>{
   if(a.type!=='holiday'||a.status!=='approved')return; if(a.start>ds)return; if(exclId&&a.id===exclId)return;
+  if(exclDates&&a.start===a.end&&exclDates.has(a.start))return; t+=Number(a.hours||0); }); return round2(t); }
+function holidayYearTotal(stId,yr,exclDates,exclId){ let t=0; absForStaffYear(stId,yr||currentYear).forEach(a=>{
+  if(a.type!=='holiday'||a.status!=='approved')return; if(exclId&&a.id===exclId)return;
   if(exclDates&&a.start===a.end&&exclDates.has(a.start))return; t+=Number(a.hours||0); }); return round2(t); }
 function holidaySplit(id,yr){ const today=iso(new Date()); let tk=0,bk=0;
   absForStaffYear(id,yr).filter(a=>a.type==='holiday'&&a.status==='approved').forEach(a=>{ const h=Number(a.hours||0); if(a.end<today) tk+=h; else bk+=h; });
@@ -679,16 +698,19 @@ function qdAccrualInfo(){ const st=state.staff.find(x=>x.id===qd.id); if(!st||qd
   if(!endDs) return null;
   const proj=round2(bookedThrough(st.id,endDs,currentYear,edited)+add);
   const acc=accruedAt(st,endDs,currentYear);
-  return {st,endDs,proj,acc,over:round2(proj-acc)}; }
+  const yearTot=round2(holidayYearTotal(st.id,currentYear,edited)+add+bankHolidayHours(st,currentYear));
+  const ent=entitlement(st);
+  return {st,endDs,proj,acc,over:round2(proj-acc),yearTot,ent,overEnt:round2(yearTot-ent)}; }
 function qdAccrualRender(){ const el=document.getElementById('qdAccrual'); if(!el)return; const info=qdAccrualInfo();
-  if(info&&info.over>0.01){ el.innerHTML=`&#9888; By ${fmtFull(info.endDs)} ${esc(firstName(info.st.name))} will have <b>${info.proj}h</b> booked but only ~<b>${info.acc}h</b> accrued (<b>${info.over}h ahead</b>). Overpayment risk if they leave.`; el.style.display='block'; }
-  else el.style.display='none'; }
+  if(info&&info.overEnt>0.01){ el.classList.add('bad'); el.innerHTML=`&#9940; This takes ${esc(firstName(info.st.name))} <b>over their allowance</b>: <b>${info.yearTot}h</b> taken + booked for the year vs <b>${info.ent}h</b> entitlement (<b>${info.overEnt}h over</b>).`; el.style.display='block'; }
+  else if(info&&info.over>0.01){ el.classList.remove('bad'); el.innerHTML=`&#9888; By ${fmtFull(info.endDs)} ${esc(firstName(info.st.name))} will have <b>${info.proj}h</b> booked but only ~<b>${info.acc}h</b> accrued (<b>${info.over}h ahead</b>). Overpayment risk if they leave.`; el.style.display='block'; }
+  else{ el.classList.remove('bad'); el.style.display='none'; } }
 function qdReadInputs(){ document.querySelectorAll('[id^="qh_"]').forEach(i=>{ qd.hrs[i.id.slice(3)]=i.value; }); }
 function qdRange(){ qdReadInputs(); qd.from=val('qdFrom')||qd.from; qd.to=val('qdTo')||qd.to; const st=state.staff.find(x=>x.id===qd.id); if(st) document.getElementById('qdDays').innerHTML=qdDaysHtml(st); }
 function qdSum(){ let t=0; document.querySelectorAll('[id^="qh_"]').forEach(i=>t+=Number(i.value)||0); const el=document.getElementById('qdTotalV'); if(el)el.textContent=round2(t); qdAccrualRender(); }
 function qdFill(zero){ const st=state.staff.find(x=>x.id===qd.id); if(!st){ toast('Choose a team member first'); return; } document.querySelectorAll('[id^="qh_"]').forEach(i=>{ const ds=i.id.slice(3); const v=zero?0:qdDefault(st,ds); i.value=v; qd.hrs[ds]=v; }); qdSum(); }
 function qdType(t){ qd.type=t; document.querySelectorAll('.qd-t').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); qdAccrualRender(); }
-function qdSave(){ if(!qd)return; if(!state.staff.find(x=>x.id===qd.id)){ toast('Choose a team member first'); return; } const acc=qdAccrualInfo(); if(acc&&acc.over>0.01&&!confirm(acc.st.name+' will be '+acc.over+'h ahead of accrual by '+fmtFull(acc.endDs)+' ('+acc.proj+'h booked vs ~'+acc.acc+'h accrued by then). Overpayment risk if they leave. Book anyway?')) return; qdReadInputs(); const isBank=qd.type==='bankhol'; const type=qd.type==='sickness'?'sickness':'holiday';
+function qdSave(){ if(!qd)return; if(!state.staff.find(x=>x.id===qd.id)){ toast('Choose a team member first'); return; } const acc=qdAccrualInfo(); if(acc&&acc.overEnt>0.01&&!confirm(acc.st.name+' would go OVER their allowance: '+acc.yearTot+'h taken + booked for the year vs '+acc.ent+'h entitlement ('+acc.overEnt+'h over). Book anyway?')) return; if(acc&&acc.overEnt<=0.01&&acc.over>0.01&&!confirm(acc.st.name+' will be '+acc.over+'h ahead of accrual by '+fmtFull(acc.endDs)+' ('+acc.proj+'h booked vs ~'+acc.acc+'h accrued by then). Overpayment risk if they leave. Book anyway?')) return; qdReadInputs(); const isBank=qd.type==='bankhol'; const type=qd.type==='sickness'?'sickness':'holiday';
   let d=parse(qd.from),e=parse(qd.to); if(e<d){const t=d;d=e;e=t;} let added=0,tot=0,n=0;
   while(d<=e&&n<62){ const ds=iso(d); let h=round2(Number(qd.hrs[ds])||0);
     const ex=state.absences.find(a=>a.staffId===qd.id&&a.start===ds&&a.end===ds);
@@ -883,7 +905,7 @@ function eSuggest(){ const st=state.staff.find(x=>x.id===val('eStaff')); const a
 function closeModal(){ document.getElementById('modalMount').innerHTML=''; }
 function saveEdit(){ const id=val('eId'),a=val('eStart'),b=val('eEnd'); if(!a||!b||b<a){ toast('Check the dates'); return; }
   const rec={staffId:val('eStaff'),type:val('eType'),start:a,end:b,hours:Number(val('eHours'))||0,status:val('eStatus'),note:val('eNote')};
-  if(rec.type==='holiday'&&rec.status==='approved'){ const st=state.staff.find(x=>x.id===rec.staffId); if(st){ const proj=round2(bookedThrough(st.id,rec.end,currentYear,null,id||null)+rec.hours); const ac=accruedAt(st,rec.end,currentYear); const over=round2(proj-ac); if(over>0.01&&!confirm(st.name+' will be '+over+'h ahead of accrual by '+fmtFull(rec.end)+' ('+proj+'h booked vs ~'+ac+'h accrued by then). Overpayment risk if they leave. Book anyway?')) return; } }
+  if(rec.type==='holiday'&&rec.status==='approved'){ const st=state.staff.find(x=>x.id===rec.staffId); if(st){ const yt=round2(holidayYearTotal(st.id,currentYear,null,id||null)+rec.hours+bankHolidayHours(st,currentYear)); const en=entitlement(st); const oe=round2(yt-en); if(oe>0.01&&!confirm(st.name+' would go OVER their allowance: '+yt+'h taken + booked for the year vs '+en+'h entitlement ('+oe+'h over). Book anyway?')) return; const proj=round2(bookedThrough(st.id,rec.end,currentYear,null,id||null)+rec.hours); const ac=accruedAt(st,rec.end,currentYear); const over=round2(proj-ac); if(oe<=0.01&&over>0.01&&!confirm(st.name+' will be '+over+'h ahead of accrual by '+fmtFull(rec.end)+' ('+proj+'h booked vs ~'+ac+'h accrued by then). Overpayment risk if they leave. Book anyway?')) return; } }
   if(id)Object.assign(getAbs(id),rec); else { rec.id=s(); rec.created=iso(new Date()); state.absences.push(rec); }
   save(); closeModal(); renderAll(); toast('Saved'); }
 function delFromModal(){ const id=val('eId'); if(id&&confirm('Delete this absence?')){ state.absences=state.absences.filter(a=>a.id!==id); save(); closeModal(); renderAll(); } }
@@ -995,6 +1017,70 @@ async function decryptPayload(text,pass){ if(!pass)throw new Error('encrypted fi
 
 /* ===== PRINT ===== */
 function printView(w){ document.querySelectorAll('.view').forEach(v=>v.classList.remove('print-active')); document.getElementById('v-'+w).classList.add('print-active'); window.print(); setTimeout(()=>document.getElementById('v-'+w).classList.remove('print-active'),500); }
+
+/* ===== REPORTS & LEAVER ===== */
+function staffOrdered(){ const order=['Pharmacy','Retail','Management']; const rk=d=>{const i=order.indexOf(d);return i<0?99:i;};
+  return [...state.staff].sort((a,b)=>rk(a.dept)-rk(b.dept)||a.name.localeCompare(b.name)); }
+function holEntries(stId,incProv){ return absForStaffYear(stId,currentYear).filter(a=>a.type==='holiday'&&(a.status==='approved'||(incProv&&a.status==='requested'))).sort((a,b)=>a.start<b.start?-1:1); }
+function openReportDialog(){ const opts=staffOrdered().map(st=>`<option value="${st.id}">${esc(st.name)} &middot; ${st.dept}</option>`).join('');
+  document.getElementById('modalMount').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal qd">
+    <div class="mh"><h3>Holiday report</h3><button class="x" onclick="closeModal()">&times;</button></div>
+    <div class="mb">
+      <label class="f">Who<select id="repWho" class="qd-person" style="margin-bottom:8px"><option value="__all">Whole team (one page each)</option>${opts}</select></label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:4px 0 2px"><input type="checkbox" id="repProv"> Include provisional (pencilled-in)</label>
+      <div class="muted" style="font-size:12px;margin-top:6px">A dated statement of every holiday taken and booked this leave year, with totals. Good for colleague sign-off.</div>
+    </div>
+    <div class="mf"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="doReport()">Print</button></div></div></div>`; }
+function personReport(st,incProv){ const todayIso=iso(new Date());
+  const ent=entitlement(st), sp=holidaySplit(st.id,currentYear), bh=bankHolidayHours(st,currentYear), acc=accruedAt(st,todayIso,currentYear);
+  const rem=round2(ent-sp.taken-sp.booked-bh);
+  const rows=holEntries(st.id,incProv).map(a=>{ const past=a.end<todayIso; const stat=a.status!=='approved'?'Provisional':(past?'Taken':'Booked');
+    const note=[a.bh?'Bank holiday booking':'', BANK_HOLIDAYS[a.start]||''].filter(Boolean).join(' \u00b7 ');
+    return `<tr><td>${fmtFull(a.start)}${a.start!==a.end?' \u2013 '+fmtFull(a.end):''}</td><td>${DOW[parse(a.start).getDay()]}</td><td class="num">${a.hours}</td><td>${stat}</td><td>${esc(note)}</td></tr>`; }).join('');
+  return `<div class="rep"><h2>Holiday statement \u00b7 ${esc(st.name)}</h2>
+    <div class="sub">Store 1478 \u00b7 ${st.dept} \u00b7 ${st.weekly}h/week \u00b7 Leave year ${leaveYearLabel()} \u00b7 Generated ${fmtFull(iso(new Date()))}</div>
+    <div class="sumline"><span>Entitlement <b>${ent}h</b>${Number(st.carry)?` (incl carry ${st.carry}h)`:''}</span><span>Accrued to date <b>${acc}h</b></span><span>Taken <b>${sp.taken}h</b></span><span>Booked <b>${sp.booked}h</b></span>${bh?`<span>Bank hols <b>${bh}h</b></span>`:''}<span>Remaining <b class="${rem<0?'neg':''}">${rem}h</b></span></div>
+    <table><thead><tr><th>Date</th><th>Day</th><th class="num">Hours</th><th>Status</th><th>Note</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="5">No holiday recorded this year.</td></tr>'}</tbody></table>
+    <div style="margin-top:14px;font-size:11px;color:#475569">Colleague signature: ____________________&nbsp;&nbsp;&nbsp;Date: ____________</div></div>`; }
+function doReport(){ const who=val('repWho'), incProv=document.getElementById('repProv').checked;
+  const list=who==='__all'?staffOrdered():staffOrdered().filter(st=>st.id===who);
+  document.getElementById('reportMount').innerHTML=list.map(st=>personReport(st,incProv)).join('');
+  closeModal(); printView('report'); }
+function bhThrough(st,ld){ if(!state.settings.closedOnBH) return 0; const{start}=yearBounds(currentYear); const set=new Set(workset(st)); let h=0;
+  Object.keys(BANK_HOLIDAYS).forEach(ds=>{ const d=parse(ds); if(d>=start&&ds<=ld&&set.has(d.getDay())) h+=dailyHours(st); }); return round2(h); }
+function leaverFigures(stId,ld){ const st=state.staff.find(x=>x.id===stId); if(!st)return null;
+  const acc=accruedAt(st,ld,currentYear);
+  const ents=holEntries(st.id,false);
+  let usedBy=0, afterHrs=0, afterN=0;
+  ents.forEach(a=>{ const h=Number(a.hours)||0; if(a.start<=ld) usedBy+=h; else { afterHrs+=h; afterN++; } });
+  usedBy=round2(usedBy+bhThrough(st,ld));
+  const bal=round2(acc-usedBy);
+  return {st,ld,acc,usedBy,afterHrs:round2(afterHrs),afterN,bal}; }
+function openLeaverDialog(){ const opts=staffOrdered().map(st=>`<option value="${st.id}">${esc(st.name)} &middot; ${st.dept}</option>`).join('');
+  document.getElementById('modalMount').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal qd">
+    <div class="mh"><h3>Leaver calculator</h3><button class="x" onclick="closeModal()">&times;</button></div>
+    <div class="mb">
+      <select id="lvWho" class="qd-person" onchange="lvCalc()">${opts}</select>
+      <div class="qd-when"><label>Last day of employment<input type="date" id="lvDate" value="${iso(new Date())}" onchange="lvCalc()"></label></div>
+      <div id="lvRes" class="lv-res"></div>
+      <div class="muted" style="font-size:12px;margin-top:8px">Pro-rata entitlement = carry-over plus the annual allowance earned evenly up to the last day. A negative balance is holiday taken beyond what they earned; recovery from final pay depends on the contract.</div>
+    </div>
+    <div class="mf"><button class="btn ghost" onclick="closeModal()">Close</button><button class="btn" onclick="lvPrint()">Print statement</button></div></div></div>`;
+  lvCalc(); }
+function lvCalc(){ const f=leaverFigures(val('lvWho'),val('lvDate')||iso(new Date())); const el=document.getElementById('lvRes'); if(!f||!el)return;
+  const verdict=f.bal>=0?`<span class="pos">${f.bal}h owed to colleague</span> (untaken accrued holiday, normally paid in final pay)`:`<span class="neg">${Math.abs(f.bal)}h overtaken</span> (holiday used beyond accrual; potential recovery from final pay, check contract)`;
+  el.innerHTML=`Pro-rata entitlement to ${fmtFull(f.ld)}: <b>${f.acc}h</b><br>Holiday taken + booked up to that date: <b>${f.usedBy}h</b><br>Balance: <b>${verdict}</b>${f.afterN?`<br><span style="color:#92400e">&#9888; ${f.afterN} booking${f.afterN===1?'':'s'} after the leave date (${f.afterHrs}h) would need cancelling.</span>`:''}`; }
+function lvPrint(){ const f=leaverFigures(val('lvWho'),val('lvDate')||iso(new Date())); if(!f)return;
+  const after=f.afterN?`<p style="color:#92400e">&#9888; ${f.afterN} booking(s) after the leave date totalling ${f.afterHrs}h to be cancelled.</p>`:'';
+  const verdict=f.bal>=0?`<span class="pos">${f.bal}h owed to the colleague</span> (accrued but untaken)`:`<span class="neg">${Math.abs(f.bal)}h overtaken</span> (taken beyond accrual; recovery subject to contract)`;
+  document.getElementById('reportMount').innerHTML=`<div class="rep"><h2>Leaver holiday calculation \u00b7 ${esc(f.st.name)}</h2>
+    <div class="sub">Store 1478 \u00b7 ${f.st.dept} \u00b7 Leave year ${leaveYearLabel()} \u00b7 Proposed last day ${fmtFull(f.ld)} \u00b7 Generated ${fmtFull(iso(new Date()))}</div>
+    <div class="sumline"><span>Annual entitlement <b>${entitlement(f.st)}h</b></span><span>Pro-rata to last day <b>${f.acc}h</b></span><span>Taken + booked by last day <b>${f.usedBy}h</b></span><span>Balance <b>${f.bal>=0?'+':''}${f.bal}h</b></span></div>
+    <p style="font-size:13px">${verdict}.</p>${after}
+    <p style="font-size:11px;color:#475569;margin-top:10px">Pro-rata basis: carry-over from day one plus annual allowance accruing evenly across the leave year to the last day of employment. Figures in hours.</p>
+    <div style="margin-top:16px;font-size:11px;color:#475569">Manager signature: ____________________&nbsp;&nbsp;&nbsp;Colleague signature: ____________________</div></div>`;
+  closeModal(); printView('report'); }
 
 /* ===== UTIL ===== */
 function val(id){ const e=document.getElementById(id); return e?e.value:''; }
