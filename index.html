@@ -73,6 +73,7 @@
   .num{text-align:right;font-variant-numeric:tabular-nums}
   .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px}
   .tag.hol{background:var(--hol-bg);color:#1e40af}.tag.sick{background:var(--sick-bg);color:#991b1b}
+  .tag.holbh{background:#ede9fe;color:#6b21a8}.tag.unp{background:#ffedd5;color:#9a3412}.tag.offd{background:#e2e8f0;color:#334155}.tag.other{background:var(--other-bg);color:#334155}
   .tag.other{background:var(--other-bg);color:#334155}.tag.appr{background:#dcfce7;color:#166534}.tag.pend{background:#fef3c7;color:#92400e}
   .bal-ok{color:var(--ok);font-weight:700}.bal-warn{color:var(--warn);font-weight:700}.bal-bad{color:var(--bad);font-weight:700}
 
@@ -285,13 +286,11 @@
 
   <nav class="tabs" id="tabs">
     <button data-tab="planner" class="active" onclick="showTab('planner')">Year planner</button>
-    <button data-tab="coverage" onclick="showTab('coverage')">Coverage</button>
     <button data-tab="bookcal" onclick="showTab('bookcal')">Booking sheet</button>
     <button data-tab="balances" onclick="showTab('balances')">Balances</button>
     <button data-tab="log" onclick="showTab('log')">Log absence</button>
     <button data-tab="sickness" onclick="showTab('sickness')">Sickness</button>
     <button data-tab="staff" onclick="showTab('staff')">Staff</button>
-    <button data-tab="requests" onclick="showTab('requests')">Provisional <span id="reqCount"></span></button>
     <button data-tab="settings" onclick="showTab('settings')">Settings</button>
   </nav>
 
@@ -328,14 +327,6 @@
     </section>
 
     <!-- COVERAGE -->
-    <section id="v-coverage" class="view">
-      <div class="section-head"><h2>Coverage</h2>
-        <label class="f" style="flex-direction:row;align-items:center;gap:8px"><span>Date</span><input type="date" id="covDate" onchange="renderCoverage()"></label>
-        <div class="spacer"></div><button class="btn ghost sm no-print" onclick="printView('coverage')">Print</button></div>
-      <div class="print-title print-only"><strong>Store 1478 Coverage</strong></div>
-      <div class="covcards" id="covCards"></div>
-      <p class="muted" style="font-size:12px;margin-top:10px">Available = staff in the department minus anyone confirmed off (holiday, sickness, unpaid) that day. Set minimum cover per department in Settings.</p>
-    </section>
 
     <!-- BOOKING SHEET -->
     <section id="v-bookcal" class="view">
@@ -373,27 +364,16 @@
 
     <!-- LOG -->
     <section id="v-log" class="view">
-      <div class="section-head"><h2>Log absence</h2></div>
+      <div class="section-head"><h2>Absence register</h2><div class="spacer"></div><button class="btn no-print" onclick="qdNew()">+ Add absence</button></div>
       <div class="card pad" style="margin-bottom:16px">
         <div class="grid-form">
-          <label class="f">Staff<select id="logStaff" onchange="suggestHours()"></select></label>
-          <label class="f">Type<select id="logType" onchange="suggestHours()">
-            <option value="holiday">Holiday</option><option value="sickness">Sickness</option>
-            <option value="unpaid">Unpaid leave</option><option value="other">Other</option></select></label>
-          <label class="f">Start date<input type="date" id="logStart" onchange="suggestHours()"></label>
-          <label class="f">End date<input type="date" id="logEnd" onchange="suggestHours()"></label>
-          <label class="f">Total hours <span class="muted" id="hoursHint"></span><input type="number" step="0.25" min="0" id="logHours"></label>
-          <label class="f">Status<select id="logStatus"><option value="approved">Confirmed</option><option value="requested">Provisional</option></select></label>
-          <label class="f" style="grid-column:1/-1">Note (optional)<input type="text" id="logNote" placeholder="e.g. pre-booked, medical appt"></label>
+          <label class="f">Who<select id="logWho" onchange="renderLog()"></select></label>
+          <label class="f">Type<select id="logFilter" onchange="renderLog()"><option value="all">All</option><option value="holiday">Holiday</option><option value="sickness">Sickness</option><option value="unpaid">Unpaid</option><option value="offday">Off days</option><option value="requested">Provisional only</option></select></label>
+          <label class="f">From<input type="date" id="logFrom" onchange="renderLog()"></label>
+          <label class="f">To<input type="date" id="logTo" onchange="renderLog()"></label>
         </div>
-        <div id="logCover"></div>
-        <div class="row" style="margin-top:14px"><button class="btn" onclick="saveLog()">Add absence</button>
-          <button class="btn ghost" onclick="clearLog()">Clear</button><span id="logMsg" class="muted" style="font-size:12px"></span></div>
+        <p class="muted" style="font-size:12px;margin:8px 0 0">All entries go through the same box as the planner, so every warning applies. Consecutive days merge into one line below; confirm provisional bookings from their row.</p>
       </div>
-      <div class="section-head"><h3>Recent entries</h3><div class="spacer"></div>
-        <label class="f" style="flex-direction:row;align-items:center;gap:8px"><span>Show</span>
-          <select id="logFilter" onchange="renderLog()"><option value="all">All</option><option value="holiday">Holiday</option>
-            <option value="sickness">Sickness</option><option value="requested">Provisional only</option></select></label></div>
       <div class="card"><div style="overflow:auto"><table id="logTable"></table></div></div>
     </section>
 
@@ -408,15 +388,11 @@
 
     <!-- STAFF -->
     <section id="v-staff" class="view">
-      <div class="section-head"><h2>Staff</h2><div class="spacer"></div><button class="btn" onclick="openStaff()">Add staff</button></div>
+      <div class="section-head"><h2>Staff</h2><div class="spacer"></div><button class="btn ghost" onclick="openRota()">Off-day rota</button><button class="btn" onclick="openStaff()">Add staff</button></div>
       <div class="card"><div style="overflow:auto"><table id="staffTable"></table></div></div>
     </section>
 
     <!-- PROVISIONAL -->
-    <section id="v-requests" class="view">
-      <div class="section-head"><h2>Provisional holidays</h2><span class="pill">Pencilled in &middot; confirm or remove</span></div>
-      <div class="card"><div style="overflow:auto"><table id="reqTable"></table></div></div>
-    </section>
 
     <!-- SETTINGS -->
     <section id="v-settings" class="view">
@@ -575,7 +551,6 @@ function boot(){
   document.getElementById('setClosed').checked=state.settings.closedOnBH!==false;
   document.getElementById('multLabel').textContent=state.settings.mult;
   loadSyncForm(); updateSyncDot();
-  document.getElementById('covDate').value=iso(new Date());
   setMode('year'); showTab('planner');
   renderAll();
   setTimeout(scrollToToday,60);
@@ -598,7 +573,7 @@ function renderAll(){
   document.getElementById('balYear').textContent=leaveYearLabel();
   const sy=document.getElementById('sickYear'); if(sy)sy.textContent=leaveYearLabel();
   fillStaffSelect();
-  renderPlanner(); renderCoverage(); renderBookcal(); renderBalances(); renderLog(); renderSickness(); renderStaff(); renderRequests();
+  renderPlanner(); renderBookcal(); renderBalances(); renderLog(); renderSickness(); renderStaff();
 }
 function showTab(t){ document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); document.getElementById('v-'+t).classList.add('active'); }
@@ -720,9 +695,14 @@ function renderQd(){ const st=state.staff.find(x=>x.id===qd.id);
       </div>
       <div class="qd-help"><button type="button" class="chip" onclick="qdFill(false)">Fill working days</button><button type="button" class="chip" onclick="qdFill(true)">All 0</button></div>
       <div id="qdDays">${st?qdDaysHtml(st):'<div class="muted" style="padding:14px 4px;font-size:13px">Choose a team member above to set the hours.</div>'}</div>
+      <div class="qd-when" style="margin-top:10px">
+        <label style="flex:2">Note (optional)<input type="text" id="qdNote" value="${esc(qd.note||'')}" placeholder="e.g. pre-booked, medical appt"></label>
+        <label style="flex:1;min-width:120px">Status<select id="qdStatus"><option value="approved" ${qd.status!=='requested'?'selected':''}>Confirmed</option><option value="requested" ${qd.status==='requested'?'selected':''}>Provisional</option></select></label>
+      </div>
       <div class="muted" style="font-size:12px;margin-top:6px">Enter hours per day (quarter-hour steps ok, e.g. 5.25, 7.5; 0 = day off). Bank hol still comes off the holiday allowance. Set a day to 0 to clear it.</div>
     </div>
-    <div class="mf"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="qdSave()">Save</button></div></div></div>`; qdAccrualRender(); }
+    <div class="mf">${(st&&qd.from===qd.to&&state.absences.some(a=>a.staffId===qd.id&&a.start===qd.from&&a.end===qd.from))?`<button class="btn danger" style="margin-right:auto" onclick="qdRemoveDay()">Remove</button>`:''}<button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="qdSave()">Save</button></div></div></div>`; qdAccrualRender(); }
+function qdRemoveDay(){ if(!qd)return; const a=state.absences.find(x=>x.staffId===qd.id&&x.start===qd.from&&x.end===qd.from); if(!a){closeModal();return;} const st=state.staff.find(x=>x.id===qd.id); if(!confirm('Remove this day for '+(st?st.name:'')+' ('+fmtFull(qd.from)+')?'))return; const snap=[a]; state.absences=state.absences.filter(x=>x!==a); save(); closeModal(); renderAll(); toastUndo('Removed', snap); }
 function qdDaysHtml(st){ let d=parse(qd.from),e=parse(qd.to); if(e<d){const t=d;d=e;e=t;}
   const single=iso(d)===iso(e);
   let n=0,total=0,rows=''; 
@@ -775,23 +755,6 @@ function qdSave(){ if(!qd)return; if(!state.staff.find(x=>x.id===qd.id)){ toast(
   save(); closeModal(); renderAll(); toast((type==='sickness'?'Sickness':type==='unpaid'?'Unpaid leave':isBank?'Bank holiday':'Holiday')+`: ${added} day${added===1?'':'s'}, ${round2(tot)}h`); }
 
 /* ===== COVERAGE TAB ===== */
-function renderCoverage(){
-  const ds=document.getElementById('covDate').value||iso(new Date()); const mount=document.getElementById('covCards');
-  const bh=BANK_HOLIDAYS[ds]; let html='';
-  if(isClosed(ds)){ mount.innerHTML=`<div class="covcard" style="grid-column:1/-1"><h3>Store closed <span class="status bad">Bank holiday</span></h3><div class="muted" style="font-size:13px">${esc(bh)} &middot; no cover required.</div></div>`; return; }
-  ['Pharmacy','Retail'].forEach(dp=>{ const team=state.staff.filter(x=>x.dept===dp); if(!team.length)return;
-    const off=offOnDate(ds,dp); const prov=state.absences.filter(a=>a.status==='requested'&&a.start<=ds&&a.end>=ds&&team.some(t=>t.id===a.staffId));
-    const avail=team.length-off.length; const mc=minCover(dp); const ok=avail>=mc;
-    html+=`<div class="covcard"><h3>${dp} <span class="status ${ok?'ok':'bad'}">${ok?'OK':'Below cover'}</span></h3>
-      <div class="big">${avail}<span style="font-size:14px;font-weight:600;color:var(--mut)"> / ${team.length} available</span></div>
-      <div class="muted" style="font-size:12px">Minimum cover ${mc}${bh?' &middot; '+esc(bh):''}</div>`;
-    if(off.length){ html+='<div class="offlist"><strong>Off:</strong>'; off.forEach(st=>{ const a=state.absences.find(x=>x.staffId===st.id&&x.start<=ds&&x.end>=ds&&(x.type==='sickness'||x.status==='approved')); html+=`<div>${esc(st.name)} &middot; ${TYPES[a.type]}</div>`; }); html+='</div>'; }
-    if(prov.length){ html+='<div class="offlist"><strong>Provisional:</strong>'; prov.forEach(a=>{ const st=state.staff.find(x=>x.id===a.staffId); html+=`<div>${esc(st?st.name:'?')}</div>`; }); html+='</div>'; }
-    html+='</div>'; });
-  mount.innerHTML=html||'<div class="empty">No staff yet</div>';
-}
-
-/* ===== BOOKING SHEET ===== */
 function firstName(n){ return String(n||'').split(' ')[0]; }
 function renderBookcal(){
   const dEl=document.getElementById('bkDept'); if(!dEl)return; const dept=dEl.value||'all';
@@ -916,31 +879,39 @@ function renderBalances(){
 }
 
 /* ===== LOG ===== */
-function fillStaffSelect(){ const sel=document.getElementById('logStaff'); if(!sel)return; sel.innerHTML=state.staff.map(st=>`<option value="${st.id}">${esc(st.name)} &middot; ${st.dept}</option>`).join(''); }
-function suggestHours(){ const st=state.staff.find(x=>x.id===document.getElementById('logStaff').value); const a=val('logStart'),b=val('logEnd'),type=val('logType'); const hint=document.getElementById('hoursHint');
-  if(st&&a&&b&&b>=a){ const wd=workDaysInRange(st,a,b); const h=round2(wd*dailyHours(st)); if(!val('logHours'))document.getElementById('logHours').value=h; hint.textContent=`(${wd} working days \u00d7 ${round2(dailyHours(st))}h)`; } else hint.textContent='';
-  // coverage hint for start date
-  const box=document.getElementById('logCover');
-  if(st&&a){ const off=offOnDate(a,st.dept).length; const total=state.staff.filter(x=>x.dept===st.dept).length; const availAfter=total-off-1; const mc=minCover(st.dept);
-    box.innerHTML=`<div class="hint ${availAfter<mc?'bad':off?'some':'ok'}">${st.dept} on ${fmt(a)}: ${off} already off. If confirmed, ${availAfter} of ${total} left (min ${mc}).</div>`; } else box.innerHTML='';
-}
-function saveLog(){ const st=state.staff.find(x=>x.id===document.getElementById('logStaff').value); const a=val('logStart'),b=val('logEnd'),type=val('logType');
-  if(!st||!a||!b){ logMsg('Pick staff and dates','bad'); return; } if(b<a){ logMsg('End is before start','bad'); return; }
-  const hours=Number(val('logHours'))||(type==='holiday'?round2(workDaysInRange(st,a,b)*dailyHours(st)):0);
-  state.absences.push({id:s(),staffId:st.id,type,start:a,end:b,hours,status:val('logStatus'),note:val('logNote'),created:iso(new Date())});
-  save(); clearLog(); renderAll(); logMsg('Absence added','ok'); toast('Absence added'); }
-function clearLog(){ ['logStart','logEnd','logHours','logNote'].forEach(id=>document.getElementById(id).value=''); document.getElementById('hoursHint').textContent=''; document.getElementById('logCover').innerHTML=''; }
-function logMsg(t,k){ const e=document.getElementById('logMsg'); e.textContent=t; e.style.color=k==='bad'?'var(--bad)':'var(--ok)'; setTimeout(()=>e.textContent='',3000); }
-function renderLog(){ const f=val('logFilter')||'all'; let list=[...state.absences].sort((a,b)=>b.start.localeCompare(a.start));
+function fillStaffSelect(){ const sel=document.getElementById('logWho'); if(!sel)return; const cur=sel.value||'all'; sel.innerHTML='<option value="all">Everyone</option>'+staffOrdered().map(st=>`<option value="${st.id}">${esc(st.name)}</option>`).join(''); sel.value=cur||'all'; }
+function renderLog(){ const f=val('logFilter')||'all'; const who=val('logWho')||'all'; const from=val('logFrom')||'', to=val('logTo')||'';
+  let list=state.absences.filter(a=>state.staff.some(s=>s.id===a.staffId));
+  if(who!=='all')list=list.filter(a=>a.staffId===who);
   if(f==='requested')list=list.filter(a=>a.status==='requested'); else if(f!=='all')list=list.filter(a=>a.type===f);
-  let html='<thead><tr><th>Name</th><th>Type</th><th>Dates</th><th class="num">Hours</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody>';
-  list.slice(0,300).forEach(a=>{ const st=state.staff.find(x=>x.id===a.staffId); if(!st)return;
-    html+=`<tr><td><strong>${esc(st.name)}</strong></td><td><span class="tag ${a.type==='holiday'?'hol':a.type==='sickness'?'sick':'other'}">${TYPES[a.type]}</span></td><td>${fmt(a.start)} &ndash; ${fmt(a.end)}</td><td class="num">${a.hours||'&ndash;'}</td><td><span class="tag ${a.status==='approved'?'appr':'pend'}">${statusLabel(a.status)}</span></td><td class="muted">${esc(a.note||'')}</td><td style="text-align:right;white-space:nowrap"><button class="btn ghost sm" onclick="openEdit(getAbs('${a.id}'))">Edit</button> <button class="btn danger sm" onclick="delAbs('${a.id}')">Delete</button></td></tr>`; });
-  if(!list.length)html+='<tr><td colspan="7" class="empty">No entries yet</td></tr>'; html+='</tbody>'; document.getElementById('logTable').innerHTML=html; }
+  if(from)list=list.filter(a=>a.end>=from); if(to)list=list.filter(a=>a.start<=to);
+  // merge consecutive single days of same person/type/status/bh into blocks
+  const key=a=>a.staffId+'|'+a.type+'|'+a.status+'|'+(a.bh?1:0);
+  const singles=list.filter(a=>a.start===a.end).sort((x,y)=>x.staffId<y.staffId?-1:x.staffId>y.staffId?1:x.start.localeCompare(y.start));
+  const multis=list.filter(a=>a.start!==a.end);
+  const blocks=[]; let cur=null;
+  singles.forEach(a=>{ if(cur&&key(cur[0])===key(a)&&daysBetween(cur[cur.length-1].end,a.start)===1){ cur.push(a); } else { cur=[a]; blocks.push(cur); } });
+  const rows=[]; 
+  blocks.forEach(g=>rows.push({a:g[0],last:g[g.length-1],ids:g.map(x=>x.id),hours:round2(g.reduce((t,x)=>t+Number(x.hours||0),0)),n:g.length}));
+  multis.forEach(a=>rows.push({a,last:a,ids:[a.id],hours:Number(a.hours||0),n:daysBetween(a.start,a.end)+1}));
+  rows.sort((x,y)=>y.a.start.localeCompare(x.a.start));
+  let html='<thead><tr><th>Name</th><th>Type</th><th>Dates</th><th class="num">Days</th><th class="num">Hours</th><th>Status</th><th>Note</th><th></th></tr></thead><tbody>';
+  rows.slice(0,400).forEach(r=>{ const a=r.a, st=state.staff.find(x=>x.id===a.staffId);
+    const tcls=a.type==='holiday'?(a.bh?'holbh':'hol'):a.type==='sickness'?'sick':a.type==='unpaid'?'unp':a.type==='offday'?'offd':'other';
+    const tlabel=a.type==='holiday'&&a.bh?'Bank hol':TYPES[a.type];
+    const dates=a.start===r.last.end?fmtFull(a.start):fmt(a.start)+' &ndash; '+fmt(r.last.end);
+    const idsAttr=r.ids.join(',');
+    const confirmBtn=a.status==='requested'?`<button class="btn sm" style="background:#16a34a" onclick="confirmAbs('${idsAttr}')">Confirm</button> `:'';
+    html+=`<tr><td><strong>${esc(st.name)}</strong></td><td><span class="tag ${tcls}">${tlabel}</span></td><td>${dates}</td><td class="num">${r.n}</td><td class="num">${r.hours||'&ndash;'}</td><td><span class="tag ${a.status==='approved'?'appr':'pend'}">${statusLabel(a.status)}</span></td><td class="muted">${esc(a.note||'')}</td><td style="text-align:right;white-space:nowrap">${confirmBtn}<button class="btn ghost sm" onclick="openEdit(getAbs('${a.id}'))">Edit</button> <button class="btn danger sm" onclick="delAbs('${idsAttr}')">Delete</button></td></tr>`; });
+  if(!rows.length)html+='<tr><td colspan="8" class="empty">No entries match</td></tr>'; html+='</tbody>';
+  const t=document.getElementById('logTable'); if(t)t.innerHTML=html; }
 function getAbs(id){ return state.absences.find(a=>a.id===id); }
-function delAbs(id){ if(!confirm('Delete this absence?'))return; state.absences=state.absences.filter(a=>a.id!==id); save(); renderAll(); }
-
-/* ===== EDIT MODAL ===== */
+function confirmAbs(ids){ const set=new Set(ids.split(',')); state.absences.forEach(a=>{ if(set.has(a.id))a.status='approved'; }); save(); renderAll(); toast('Confirmed'); }
+function delAbs(ids){ const set=new Set(ids.split(',')); const removed=state.absences.filter(a=>set.has(a.id)); if(!removed.length)return;
+  const st=state.staff.find(x=>x.id===removed[0].staffId); const lbl=removed.length>1?removed.length+' days':fmtFull(removed[0].start);
+  if(!confirm('Delete '+(st?st.name:'')+' \u00b7 '+lbl+'?'))return;
+  state.absences=state.absences.filter(a=>!set.has(a.id)); save(); renderAll(); toastUndo(removed.length+' deleted', removed); }
+function undoDelete(snapshot){ snapshot.forEach(a=>{ if(!state.absences.some(x=>x.id===a.id)) state.absences.push(a); }); save(); renderAll(); toast('Restored'); }
 function openEdit(a,isNew){ const opts=state.staff.map(st=>`<option value="${st.id}" ${st.id===a.staffId?'selected':''}>${esc(st.name)} &middot; ${st.dept}</option>`).join('');
   const typeOpt=Object.entries(TYPES).map(([k,v])=>`<option value="${k}" ${a.type===k?'selected':''}>${v}</option>`).join('');
   document.getElementById('modalMount').innerHTML=`<div class="overlay"><div class="modal"><div class="mh"><h3>${isNew?'Log absence':'Edit absence'}</h3><button class="x" onclick="closeModal()">&times;</button></div>
@@ -984,6 +955,35 @@ function renderSickness(){ const{start,end}=yearBounds(currentYear); const sI=is
   document.getElementById('sickTable').innerHTML=html; }
 
 /* ===== STAFF ===== */
+function openRota(){ const opts=staffOrdered().map(st=>`<option value="${st.id}">${esc(st.name)} &middot; ${st.dept}</option>`).join('');
+  document.getElementById('modalMount').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal qd">
+    <div class="mh"><h3>Off-day rota</h3><button class="x" onclick="closeModal()">&times;</button></div>
+    <div class="mb">
+      <p class="muted" style="font-size:12.5px;margin:0 0 10px">Blocks a repeating day across the year for people who work a rotation (e.g. 1 in 3 Saturdays). Creates 0-hour off-day markers only, nothing financial.</p>
+      <select id="rtWho" class="qd-person">${opts}</select>
+      <div class="qd-when">
+        <label>Weekday<select id="rtDow"><option value="6">Saturday</option><option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option></select></label>
+        <label>Pattern<select id="rtPat"><option value="off1in2">Off 1 in 2</option><option value="off1in3" selected>Off 1 in 3</option><option value="off2in3">Off 2 in 3</option><option value="off1in4">Off 1 in 4</option><option value="offall">Off every one</option></select></label>
+      </div>
+      <div class="qd-when">
+        <label>From<input type="date" id="rtFrom" value="${iso(yearBounds(currentYear).start)}"></label>
+        <label>To<input type="date" id="rtTo" value="${iso(yearBounds(currentYear).end)}"></label>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px"><input type="checkbox" id="rtInvert"> First matching date is a working one (shift the cycle)</label>
+      <div id="rtPreview" class="muted" style="font-size:12px;margin-top:8px"></div>
+    </div>
+    <div class="mf"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="rotaApply()">Create markers</button></div></div></div>`;
+  ['rtWho','rtDow','rtPat','rtFrom','rtTo','rtInvert'].forEach(id=>{ const e=document.getElementById(id); if(e)e.addEventListener('change',rotaPreview); }); rotaPreview(); }
+function rotaDates(){ const dow=Number(val('rtDow')); const pat=val('rtPat'); const from=val('rtFrom'), to=val('rtTo'); const invert=document.getElementById('rtInvert').checked;
+  if(!from||!to||to<from)return []; const offMod={off1in2:[2,[0]],off1in3:[3,[0]],off2in3:[3,[0,1]],off1in4:[4,[0]],offall:[1,[0]]}[pat];
+  const dates=[]; let d=parse(from),e=parse(to),idx=0;
+  while(d<=e){ if(d.getDay()===dow){ let pos=idx%offMod[0]; if(invert)pos=(pos+1)%offMod[0]; if(offMod[1].indexOf(pos)>-1)dates.push(iso(d)); idx++; } d.setDate(d.getDate()+1); }
+  return dates; }
+function rotaPreview(){ const el=document.getElementById('rtPreview'); if(!el)return; const ds=rotaDates();
+  el.innerHTML=ds.length?`Will block <b>${ds.length}</b> day${ds.length===1?'':'s'}: ${ds.slice(0,6).map(x=>fmt(x)).join(', ')}${ds.length>6?' \u2026':''}`:'No matching dates in range.'; }
+function rotaApply(){ const id=val('rtWho'); const st=state.staff.find(x=>x.id===id); const ds=rotaDates(); if(!st||!ds.length){ toast('Nothing to create'); return; }
+  let made=0; ds.forEach(d=>{ const ex=state.absences.find(a=>a.staffId===id&&a.start===d&&a.end===d); if(ex){ if(ex.type==='offday')return; return; } state.absences.push({id:s(),staffId:id,type:'offday',start:d,end:d,hours:0,status:'approved',note:'rota',created:iso(new Date())}); made++; });
+  save(); closeModal(); renderAll(); toast(made+' off-day marker'+(made===1?'':'s')+' created for '+firstName(st.name)); }
 function renderStaff(){ let html='<thead><tr><th>Name</th><th>Dept</th><th class="num">h/wk</th><th>Working days</th><th class="num">Entitlement</th><th class="num">Carry</th><th>Note</th><th></th></tr></thead><tbody>';
   [...state.staff].sort((a,b)=>a.dept.localeCompare(b.dept)||a.name.localeCompare(b.name)).forEach(st=>{
     const dl=workset(st).slice().sort((a,b)=>((a+6)%7)-((b+6)%7)).map(d=>DOW[d]).join(' ');
@@ -1009,12 +1009,6 @@ function saveStaff(){ const id=val('stId'); const name=val('stName').trim(); if(
 function delStaff(id){ const st=state.staff.find(x=>x.id===id); if(!confirm(`Remove ${st.name}? Their past absences stay in the records.`))return; state.staff=state.staff.filter(x=>x.id!==id); save(); renderAll(); }
 
 /* ===== PROVISIONAL ===== */
-function renderRequests(){ const reqs=state.absences.filter(a=>a.status==='requested').sort((a,b)=>a.start.localeCompare(b.start));
-  document.getElementById('reqCount').innerHTML=reqs.length?`<span class="tag pend" style="margin-left:4px">${reqs.length}</span>`:'';
-  let html='<thead><tr><th>Name</th><th>Type</th><th>Dates</th><th class="num">Hours</th><th>Note</th><th class="num">Remaining if confirmed</th><th></th></tr></thead><tbody>';
-  reqs.forEach(a=>{ const st=state.staff.find(x=>x.id===a.staffId); if(!st)return; const rem=round2(entitlement(st)-holidayTaken(st.id,currentYear)-bankHolidayHours(st,currentYear)-Number(a.hours||0));
-    html+=`<tr><td><strong>${esc(st.name)}</strong></td><td><span class="tag ${a.type==='holiday'?'hol':'other'}">${TYPES[a.type]}</span></td><td>${fmt(a.start)} &ndash; ${fmt(a.end)}</td><td class="num">${a.hours||'&ndash;'}</td><td class="muted">${esc(a.note||'')}</td><td class="num ${rem<0?'bal-bad':''}">${rem}h</td><td style="text-align:right;white-space:nowrap"><button class="btn sm" onclick="approveReq('${a.id}')">Confirm</button> <button class="btn danger sm" onclick="declineReq('${a.id}')">Remove</button></td></tr>`; });
-  if(!reqs.length)html+='<tr><td colspan="7" class="empty">Nothing pencilled in</td></tr>'; html+='</tbody>'; document.getElementById('reqTable').innerHTML=html; }
 function approveReq(id){ const a=getAbs(id); if(a){ a.status='approved'; save(); renderAll(); toast('Confirmed'); } }
 function declineReq(id){ if(!confirm('Remove this provisional holiday?'))return; state.absences=state.absences.filter(a=>a.id!==id); save(); renderAll(); toast('Removed'); }
 
@@ -1144,7 +1138,11 @@ function lvPrint(){ const f=leaverFigures(val('lvWho'),val('lvDate')||iso(new Da
 function val(id){ const e=document.getElementById(id); return e?e.value:''; }
 function statusLabel(s){ return s==='approved'?'Confirmed':'Provisional'; }
 function esc(str){ return String(str||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function toast(t){ const m=document.getElementById('toastMount'); m.innerHTML=`<div class="toast">${esc(t)}</div>`; setTimeout(()=>m.innerHTML='',2200); }
+let _undoData=null,_undoTimer=null;
+function toast(t){ const m=document.getElementById('toastMount'); if(!m)return; m.innerHTML=`<div class="toast">${esc(t)}</div>`; setTimeout(()=>{ if(m.firstChild&&!m.firstChild.dataset.undo)m.innerHTML=''; },2200); }
+function toastUndo(t,snapshot){ const m=document.getElementById('toastMount'); if(!m){return;} _undoData=snapshot; clearTimeout(_undoTimer);
+  m.innerHTML=`<div class="toast" data-undo="1">${esc(t)} <button onclick="undoDelete(_undoData);document.getElementById('toastMount').innerHTML='';" style="margin-left:10px;background:none;border:none;color:#7dd3fc;font-weight:700;cursor:pointer;font-size:13px">Undo</button></div>`;
+  _undoTimer=setTimeout(()=>{ m.innerHTML=''; _undoData=null; },7000); }
 
 load();
 </script>
