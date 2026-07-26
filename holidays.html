@@ -1101,35 +1101,44 @@ function doReport(){ const who=val('repWho'), incProv=document.getElementById('r
   closeModal(); printView('report'); }
 function bhThrough(st,ld){ if(!state.settings.closedOnBH) return 0; const{start}=yearBounds(currentYear); const set=new Set(workset(st)); let h=0;
   Object.keys(BANK_HOLIDAYS).forEach(ds=>{ const d=parse(ds); if(d>=start&&ds<=ld&&set.has(d.getDay())) h+=dailyHours(st); }); return round2(h); }
-function leaverFigures(stId,ld){ const st=state.staff.find(x=>x.id===stId); if(!st)return null;
+function leaverFigures(stId,ld,bDays,bHrs){ const st=state.staff.find(x=>x.id===stId); if(!st)return null;
   const acc=accruedAt(st,ld,currentYear);
+  let bootsEnt=null,bootsAcc=null,bootsBal=null;
+  if(bDays>0&&bHrs>0){ const{start,end}=yearBounds(currentYear); const s0=iso(start),e0=iso(end);
+    const total=daysBetween(s0,e0)+1; const done=ld>=e0?total:ld<s0?0:daysBetween(s0,ld)+1;
+    bootsEnt=round2(bDays*bHrs); bootsAcc=round2(bootsEnt*done/total); }
   const ents=holEntries(st.id,false);
   let usedBy=0, afterHrs=0, afterN=0;
   ents.forEach(a=>{ const h=Number(a.hours)||0; if(a.start<=ld) usedBy+=h; else { afterHrs+=h; afterN++; } });
   usedBy=round2(usedBy+bhThrough(st,ld));
   const bal=round2(acc-usedBy);
-  return {st,ld,acc,usedBy,afterHrs:round2(afterHrs),afterN,bal}; }
+  if(bootsAcc!==null) bootsBal=round2(bootsAcc-usedBy);
+  return {st,ld,acc,usedBy,afterHrs:round2(afterHrs),afterN,bal,bootsEnt,bootsAcc,bootsBal}; }
 function openLeaverDialog(){ const opts=staffOrdered().map(st=>`<option value="${st.id}">${esc(st.name)} &middot; ${st.dept}</option>`).join('');
   document.getElementById('modalMount').innerHTML=`<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal qd">
     <div class="mh"><h3>Leaver calculator</h3><button class="x" onclick="closeModal()">&times;</button></div>
     <div class="mb">
       <select id="lvWho" class="qd-person" onchange="lvCalc()">${opts}</select>
       <div class="qd-when"><label>Last day of employment<input type="date" id="lvDate" value="${iso(new Date())}" onchange="lvCalc()"></label></div>
+      <div class="qd-when"><label>Boots basis: entitlement days<input type="number" id="lvDays" step="0.5" min="0" placeholder="e.g. 33" oninput="lvCalc()"></label><label>hours per day<input type="number" id="lvDayHrs" step="0.05" min="0" placeholder="e.g. 4.05" oninput="lvCalc()"></label></div>
       <div id="lvRes" class="lv-res"></div>
-      <div class="muted" style="font-size:12px;margin-top:8px">Pro-rata entitlement = carry-over plus the annual allowance earned evenly up to the last day. A negative balance is holiday taken beyond what they earned; recovery from final pay depends on the contract.</div>
+      <div class="muted" style="font-size:12px;margin-top:8px">Tool basis uses this person's real hours. The optional Boots basis (days &times; hours/day, same day-count pro-rata) lets you compare against the payroll figure; leave blank to hide it.</div>
     </div>
     <div class="mf"><button class="btn ghost" onclick="closeModal()">Close</button><button class="btn" onclick="lvPrint()">Print statement</button></div></div></div>`;
   lvCalc(); }
-function lvCalc(){ const f=leaverFigures(val('lvWho'),val('lvDate')||iso(new Date())); const el=document.getElementById('lvRes'); if(!f||!el)return;
+function lvCalc(){ const f=leaverFigures(val('lvWho'),val('lvDate')||iso(new Date()),Number(val('lvDays'))||0,Number(val('lvDayHrs'))||0); const el=document.getElementById('lvRes'); if(!f||!el)return;
   const verdict=f.bal>=0?`<span class="pos">${f.bal}h owed to colleague</span> (untaken accrued holiday, normally paid in final pay)`:`<span class="neg">${Math.abs(f.bal)}h overtaken</span> (holiday used beyond accrual; potential recovery from final pay, check contract)`;
-  el.innerHTML=`Pro-rata entitlement to ${fmtFull(f.ld)}: <b>${f.acc}h</b><br>Holiday taken + booked up to that date: <b>${f.usedBy}h</b><br>Balance: <b>${verdict}</b>${f.afterN?`<br><span style="color:#92400e">&#9888; ${f.afterN} booking${f.afterN===1?'':'s'} after the leave date (${f.afterHrs}h) would need cancelling.</span>`:''}`; }
-function lvPrint(){ const f=leaverFigures(val('lvWho'),val('lvDate')||iso(new Date())); if(!f)return;
+  let boots=''; if(f.bootsAcc!==null){ const bv=f.bootsBal>=0?`<span class="pos">${f.bootsBal}h owed</span>`:`<span class="neg">${Math.abs(f.bootsBal)}h overtaken</span>`; const diff=round2(f.acc-f.bootsAcc);
+    boots=`<hr style="border:none;border-top:1px solid #e2e8f0;margin:9px 0"><div style="font-size:12.5px"><b>Boots basis</b> (${Number(val('lvDays'))} days &times; ${Number(val('lvDayHrs'))}h): pro-rata entitlement <b>${f.bootsAcc}h</b>, balance <b>${bv}</b><br><span class="muted">Tool entitlement is ${diff>=0?'+':''}${diff}h vs Boots by the last day. Tool uses this colleague's real ${round2(dailyHours(f.st))}h average day; Boots is using ${Number(val('lvDayHrs'))}h.</span></div>`; }
+  el.innerHTML=`Pro-rata entitlement to ${fmtFull(f.ld)}: <b>${f.acc}h</b><br>Holiday taken + booked up to that date: <b>${f.usedBy}h</b><br>Balance: <b>${verdict}</b>${f.afterN?`<br><span style="color:#92400e">&#9888; ${f.afterN} booking${f.afterN===1?'':'s'} after the leave date (${f.afterHrs}h) would need cancelling.</span>`:''}${boots}`; }
+function lvPrint(){ const f=leaverFigures(val('lvWho'),val('lvDate')||iso(new Date()),Number(val('lvDays'))||0,Number(val('lvDayHrs'))||0); if(!f)return;
+  const bootsLine=f.bootsAcc!==null?`<p style="font-size:12px;color:#334155">Boots basis (${Number(val('lvDays'))} days &times; ${Number(val('lvDayHrs'))}h/day): pro-rata entitlement ${f.bootsAcc}h, balance ${f.bootsBal>=0?'+':''}${f.bootsBal}h. Difference vs tool ${round2(f.acc-f.bootsAcc)>=0?'+':''}${round2(f.acc-f.bootsAcc)}h.</p>`:'';
   const after=f.afterN?`<p style="color:#92400e">&#9888; ${f.afterN} booking(s) after the leave date totalling ${f.afterHrs}h to be cancelled.</p>`:'';
   const verdict=f.bal>=0?`<span class="pos">${f.bal}h owed to the colleague</span> (accrued but untaken)`:`<span class="neg">${Math.abs(f.bal)}h overtaken</span> (taken beyond accrual; recovery subject to contract)`;
   document.getElementById('reportMount').innerHTML=`<div class="rep"><h2>Leaver holiday calculation \u00b7 ${esc(f.st.name)}</h2>
     <div class="sub">Store 1478 \u00b7 ${f.st.dept} \u00b7 Leave year ${leaveYearLabel()} \u00b7 Proposed last day ${fmtFull(f.ld)} \u00b7 Generated ${fmtFull(iso(new Date()))}</div>
     <div class="sumline"><span>Annual entitlement <b>${entitlement(f.st)}h</b></span><span>Pro-rata to last day <b>${f.acc}h</b></span><span>Taken + booked by last day <b>${f.usedBy}h</b></span><span>Balance <b>${f.bal>=0?'+':''}${f.bal}h</b></span></div>
-    <p style="font-size:13px">${verdict}.</p>${after}
+    <p style="font-size:13px">${verdict}.</p>${bootsLine}${after}
     <p style="font-size:11px;color:#475569;margin-top:10px">Pro-rata basis: carry-over from day one plus annual allowance accruing evenly across the leave year to the last day of employment. Figures in hours.</p>
     <div style="margin-top:16px;font-size:11px;color:#475569">Manager signature: ____________________&nbsp;&nbsp;&nbsp;Colleague signature: ____________________</div></div>`;
   closeModal(); printView('report'); }
